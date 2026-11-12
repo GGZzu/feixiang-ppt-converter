@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="粘贴飞象老师生成的 HTML 源码，或选择 HTML 文件。浏览器内导出可以离线放映的互动 PPT。">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; worker-src 'self'; connect-src 'self' https://*.fbcontent.cn; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="theme-color" content="#f6f8f6">
+  <title>飞象课件转互动 PPT</title>
+  <link rel="stylesheet" href="./style.css">
+  <script defer src="./acorn.js"></script>
+  <script defer src="./model.js"></script>
+  <script defer src="./pptx.js"></script>
+  <script defer src="./app.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-inner">
+      <a class="wordmark" href="./" aria-label="回到飞象课件转换首页"><span class="brand-icon" aria-hidden="true">P</span>课件转换</a>
+      <nav aria-label="页内导航">
+        <a href="#help">使用说明</a>
+        <button type="button" class="button secondary small" id="demo">载入示例</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="intro" aria-labelledby="page-title">
+      <h1 id="page-title">飞象课件转互动 PPT</h1>
+      <p>把飞象老师生成的 HTML 转成课堂可点选、可反馈的 PowerPoint。<br class="desktop-break">下载后带到教室，打开 PPT 就能离线放映。</p>
+      <div class="info-note"><span class="status-dot" aria-hidden="true"></span>无需登录 · 课件源码在本机处理</div>
+    </section>
+
+    <div class="workspace">
+      <section class="panel input-panel" aria-labelledby="import-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="import-title">导入课件</h2>
+            <p>使用飞象老师提供的 HTML 源码或文件。</p>
+          </div>
+        </div>
+        <div class="tabs" role="tablist" aria-label="导入方式">
+          <button id="paste-tab" type="button" role="tab" aria-selected="true" aria-controls="paste-panel">粘贴源码</button>
+          <button id="file-tab" type="button" role="tab" aria-selected="false" aria-controls="file-panel" tabindex="-1">选择 HTML 文件</button>
+        </div>
+        <div id="paste-panel" role="tabpanel" aria-labelledby="paste-tab">
+          <label class="sr-only" for="source">飞象课件 HTML 源码</label>
+          <textarea id="source" spellcheck="false" autocomplete="off" autocapitalize="off"
+            placeholder="将完整的 HTML 源码粘贴到这里。"></textarea>
+          <div class="source-actions">
+            <span class="muted" id="paste-info">复制完成后点识别课件</span>
+            <button type="button" class="button secondary" id="analyze">识别课件</button>
+          </div>
+        </div>
+        <div id="file-panel" role="tabpanel" aria-labelledby="file-tab" hidden>
+          <div class="drop-area" id="drop-area">
+            <div class="upload-icon" aria-hidden="true">↑</div>
+            <strong id="file-label">选择或拖入 HTML 文件</strong>
+            <span id="file-info">支持 .html、.htm，最大 8 MB</span>
+            <button type="button" class="button secondary" id="browse">选择文件</button>
+            <input type="file" id="file" accept=".html,.htm,text/html" hidden>
+          </div>
+        </div>
+        <p id="status" class="status" role="status" aria-live="polite" hidden></p>
+        <details id="settings" hidden>
+          <summary>封面和翻页</summary>
+          <div class="settings">
+            <div>
+              <label for="cover-file">封面插图</label>
+              <input type="file" id="cover-file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp">
+              <p id="cover-state" class="muted" aria-live="polite"></p>
+            </div>
+            <div id="timing-box" hidden>
+              <label class="checkline" for="use-timing"><input type="checkbox" id="use-timing" checked>保留原课件的定时翻页</label>
+              <p id="timing-help" class="muted"></p>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section class="panel output-panel" aria-labelledby="preview-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="preview-title">预览与导出</h2>
+            <p id="preview-desc">导入后可试选一道题，确认反馈。</p>
+          </div>
+          <span class="file-type" aria-hidden="true">PPTX</span>
+        </div>
+        <div class="preview" id="preview-empty">
+          <div class="mock-slide" aria-hidden="true">
+            <div class="mock-header"></div>
+            <div class="mock-body">
+              <div><i></i><i></i><i></i></div>
+              <div><i></i><i></i></div>
+            </div>
+          </div>
+          <p>等待读取课件</p>
+        </div>
+        <div class="preview ready" id="preview-ready" hidden>
+          <p class="lesson-name" id="lesson-name"></p>
+          <div class="facts" id="facts"></div>
+          <div class="preview-question" id="preview-question"></div>
+        </div>
+        <div class="download-zone">
+          <div id="progress-area" class="progress-area" hidden>
+            <div class="progress-meta"><span id="progress-label" role="status" aria-live="polite">准备生成</span><span id="progress-number"></span></div>
+            <progress id="progress" max="100" value="0" aria-label="导出进度"></progress>
+          </div>
+          <div class="download-actions">
+            <button class="button primary" type="button" id="export" disabled>下载互动 PPT</button>
+            <button class="button secondary" type="button" id="cancel" hidden>取消</button>
+          </div>
+          <p class="muted download-note" id="export-note" aria-live="polite">下载后用桌面版 PowerPoint 从第一页放映。</p>
+        </div>
+      </section>
+    </div>
+
+    <section id="help" class="help" aria-label="使用说明">
+      <details>
+        <summary>从飞象老师哪里复制代码？</summary>
+        <p>在飞象老师打开你生成的课件，复制它提供的完整 HTML 源码，或者下载 HTML 文件。回到这里粘贴源码并识别，或直接选择文件。飞象的分享链接需要先打开后取到源码。</p>
+      </details>
+      <details>
+        <summary>能保留哪些互动？</summary>
+        <p>目前支持源码中写明题目、选项和反馈或评分规则的闯关、情境选择和选择题。可导出点选、分支反馈、累计计分、结算，以及识别到的定时翻页。含情绪强度的兼容课件可在 PPT 内点选 1 到 10 分。</p>
+        <p>幻灯片按 16:9 排版，沿用可识别的配色和封面。拖拽、网页特效和其他依赖脚本运行的玩法暂不支持。</p>
+      </details>
+      <details>
+        <summary>PPT 下载后怎么用？</summary>
+        <p>用桌面版 Microsoft PowerPoint 打开文件，从第一页放映，使用课件上的按钮前进。一个文件会包含多条答题路线，放映只会经过当前路线。</p>
+      </details>
+    </section>
+  </main>
+
+  <footer class="wrap footer"><span>课件转换</span><span>独立工具 · 适配飞象老师导出的 HTML</span></footer>
+  <noscript>需要启用浏览器的 JavaScript 才能生成 PPT。</noscript>
+</body>
+</html>
+
