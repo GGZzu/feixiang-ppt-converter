@@ -94,8 +94,27 @@ input[type="checkbox"] { accent-color: var(--accent); }
 .choices button:hover, .choices button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
 .choice-result { font-size: 12px; margin: 8px 0 0; color: var(--accent-dark); }
 #edit-questions { margin-top: 10px; }
-#question-editor { width: min(640px, calc(100% - 24px)); max-height: 90vh; border: 1px solid var(--border); border-radius: 15px; padding: 20px; color: var(--ink); }
-#question-editor::backdrop { background: #182d27a0; }
+#question-editor, #share-dialog { width: min(640px, calc(100% - 24px)); max-height: 90vh; border: 1px solid var(--border); border-radius: 15px; padding: 20px; color: var(--ink); }
+#question-editor::backdrop, #share-dialog::backdrop { background: #182d27a0; }
+.project-actions { display: flex; gap: 7px; flex-wrap: wrap; margin: 8px 0; }
+.editor-add { margin: 6px 0; }
+#play-link { text-decoration: none; display: inline-flex; align-items: center; }
+#share-scope { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; color: var(--ink); background: white; }
+#share-qr { display: block; width: min(100%, 430px); height: auto; margin: 10px auto; image-rendering: pixelated; }
+#classroom-player { padding: clamp(20px, 6vw, 65px) 0; max-width: 800px; }
+.play-panel h1 { margin: 6px 0; font-size: clamp(24px, 5vw, 38px); }
+.play-panel > p { overflow-wrap: anywhere; white-space: pre-wrap; }
+.play-list { display: grid; gap: 8px; margin: 12px 0; }
+.play-list button, .play-ratings button { min-height: 42px; overflow-wrap: anywhere; }
+.play-list button { text-align: left; }
+.play-list button[aria-pressed="true"], .play-ratings button[aria-pressed="true"] { background: #d6eae1; border-color: #437e6c; }
+.play-ratings { display: flex; flex-wrap: wrap; gap: 6px; }
+.play-feedback:not(:empty) { border-left: 3px solid #579582; padding: 5px 12px; margin-top: 10px; overflow-wrap: anywhere; }
+.play-match { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.play-order { padding-left: 26px; }
+.order-row { padding: 8px; border-radius: 8px; border: 1px solid var(--border); }
+.order-row span { display: block; margin-bottom: 5px; overflow-wrap: anywhere; }
+.order-row button { margin-right: 5px; }
 .editor-heading { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
 .editor-heading h2 { font-size: 21px; margin: 0; }
 .editor-heading p { margin: 3px 0 8px; }

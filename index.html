@@ -8,11 +8,15 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; worker-src 'self'; connect-src 'self' https://*.fbcontent.cn; base-uri 'none'; form-action 'none'; object-src 'none'">
   <meta name="theme-color" content="#f6f8f6">
   <title>飞象课件转互动 PPT</title>
-  <link rel="stylesheet" href="./style.css?v=2">
+  <link rel="stylesheet" href="./style.css?v=3">
   <script defer src="./acorn.js"></script>
   <script defer src="./model.js"></script>
-  <script defer src="./pptx.js"></script>
-  <script defer src="./app.js?v=2"></script>
+  <script defer src="./pptx.js?v=3"></script>
+  <script defer src="./project.js?v=3"></script>
+  <script defer src="./qrcode.js"></script>
+  <script defer src="./fflate.js"></script>
+  <script defer src="./play.js?v=3"></script>
+  <script defer src="./app.js?v=3"></script>
 </head>
 <body>
   <header class="top">
@@ -39,6 +43,11 @@
             <h2 id="import-title">导入课件</h2>
             <p>使用飞象老师提供的 HTML 源码或文件。</p>
           </div>
+        </div>
+        <div class="project-actions">
+          <button type="button" class="button secondary small" id="new-project">新建课件</button>
+          <button type="button" class="button secondary small" id="open-project">打开课件项目</button>
+          <input type="file" id="project-file" accept=".json,application/json" hidden>
         </div>
         <div class="tabs" role="tablist" aria-label="导入方式">
           <button id="paste-tab" type="button" role="tab" aria-selected="true" aria-controls="paste-panel">粘贴源码</button>
@@ -108,6 +117,10 @@
             <div class="progress-meta"><span id="progress-label" role="status" aria-live="polite">准备生成</span><span id="progress-number"></span></div>
             <progress id="progress" max="100" value="0" aria-label="导出进度"></progress>
           </div>
+          <div class="project-actions">
+            <button type="button" class="button secondary small" id="save-project" disabled>保存课件项目</button>
+            <button type="button" class="button secondary small" id="share-activity" disabled>试玩与分享网页</button>
+          </div>
           <div class="download-actions">
             <button class="button primary" type="button" id="export" disabled>下载互动 PPT</button>
             <button class="button secondary" type="button" id="cancel" hidden>取消</button>
@@ -125,7 +138,7 @@
       <details>
         <summary>能保留哪些互动？</summary>
         <p>目前支持源码中写明题目、选项和反馈或评分规则的闯关、情境选择和选择题。可导出点选、分支反馈、累计计分、结算，以及识别到的定时翻页。含情绪强度的兼容课件可在 PPT 内点选 1 到 10 分。</p>
-        <p>幻灯片按 16:9 排版，沿用可识别的配色和封面。拖拽、网页特效和其他依赖脚本运行的玩法暂不支持。</p>
+        <p>新建的配对和排序活动在网页上可以拖放或点选，在离线 PPT 里用逐步点选完成。飞象自定义脚本和特效仍依赖原网页。</p>
       </details>
       <details>
         <summary>PPT 下载后怎么用？</summary>
@@ -144,12 +157,42 @@
         </div>
         <button type="button" class="button secondary small" id="editor-cancel">取消</button>
       </div>
+      <label class="editor-field">课件标题 <input id="project-title" maxlength="100" required></label>
+      <label class="editor-field">活动说明 <textarea id="project-intro" maxlength="320"></textarea></label>
+      <label><input id="project-scoring" type="checkbox"> 累计积分</label>
       <label class="editor-field">选择题目 <select id="editor-select"></select></label>
+      <div class="project-actions">
+        <button type="button" class="button secondary small" id="move-up">上移</button>
+        <button type="button" class="button secondary small" id="move-down">下移</button>
+        <button type="button" class="button secondary small" id="remove-question">删除本题</button>
+      </div>
+      <div class="project-actions" aria-label="添加题目">
+        <button type="button" class="button secondary small" id="add-choice">添加选择题</button>
+        <button type="button" class="button secondary small" id="add-match">添加配对</button>
+        <button type="button" class="button secondary small" id="add-order">添加排序</button>
+      </div>
       <div id="editor-fields"></div>
       <p id="editor-error" role="alert" class="status" data-state="error" hidden></p>
       <div class="editor-actions"><button type="submit" class="button primary">应用修改</button></div>
     </form>
   </dialog>
+  <dialog id="share-dialog" aria-labelledby="share-title">
+    <div class="editor-heading">
+      <h2 id="share-title">网页活动</h2>
+      <button type="button" class="button secondary small" id="share-close">关闭</button>
+    </div>
+    <p class="muted">学生打开链接即可参加，反馈显示在各自设备上。分享链接包含题目和答案，适合课堂练习。</p>
+    <label class="editor-field" for="share-scope">分享范围</label>
+    <select id="share-scope"></select>
+    <label class="editor-field">活动链接 <input id="share-link" readonly></label>
+    <div class="project-actions">
+      <a class="button secondary" id="play-link" target="_blank" rel="noopener">打开试玩</a>
+      <button type="button" class="button secondary" id="copy-link">复制链接</button>
+    </div>
+    <canvas id="share-qr" aria-label="活动二维码" role="img" hidden></canvas>
+    <p id="share-status" class="muted" role="status"></p>
+  </dialog>
+  <section id="classroom-player" class="wrap" hidden aria-live="polite"></section>
   <footer class="wrap footer"><span>课件转换</span><span>独立工具 · 适配飞象老师导出的 HTML</span></footer>
   <noscript>需要启用浏览器的 JavaScript 才能生成 PPT。</noscript>
 </body>

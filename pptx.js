@@ -33,7 +33,8 @@
       }
       if (state.kind === 'feedback') {
         const option = q.options[state.value];
-        const question = state.question + 1;
+        const question = option.nextIndex ?? state.question + 1;
+        state.finishes = question === data.qs.length;
         state.next = add(
           question === data.qs.length ? 'end' : 'question',
           question,
@@ -117,7 +118,7 @@
       text(state.score, 1.92, 2.55, 4.0, 0.64, 41, { bold: true });
       text('总积分', 1.92, 3.23, 4.0, 0.26, 13);
     }
-    const cards = [['完成关卡', data.levelCount + ' / ' + data.levelCount]];
+    const cards = data.branching ? [['活动状态', '已完成']] : [['完成关卡', data.levelCount + ' / ' + data.levelCount]];
     if (data.countsCorrect) cards.unshift([data.originalEmotionLayout ? '理性选择' : '正确题数',
       state.correct + ' / ' + data.qs.length]);
     if (data.countsCorrect && data.rank.length) {
@@ -243,7 +244,7 @@
       if (data.advanceMs) {
         text((data.advanceMs / 1000) + ' 秒后继续', 0.65, 6.60, 4, 0.29, 11, { color: c.muted });
       }
-      button(state.question + 1 === data.qs.length ? '查看结果' : '下一题',
+      button(state.finishes ? '查看结果' : option.nextIndex === state.question ? '重新选择' : '继续',
         6.99, 6.56, 1.76, 0.41, state.next);
     } else {
       text(locked ? '请先评估情绪强度，再选择应对方式。' : '请选择一个选项。',

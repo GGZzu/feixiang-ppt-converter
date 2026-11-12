@@ -1,6 +1,6 @@
 'use strict';
 
-importScripts('./pptxgen.bundle.js', './pptx.js');
+importScripts('./pptxgen.bundle.js', './pptx.js?v=3');
 
 self.addEventListener('message', async ({ data: input }) => {
   let lastProgress = -1;
