@@ -93,6 +93,17 @@ input[type="checkbox"] { accent-color: var(--accent); }
 .choices button { text-align: left; padding: 6px 9px; background: #fff; border: 1px solid #d5e1da; border-radius: 6px; color: var(--ink); font-size: 12px; overflow-wrap: anywhere; }
 .choices button:hover, .choices button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
 .choice-result { font-size: 12px; margin: 8px 0 0; color: var(--accent-dark); }
+#edit-questions { margin-top: 10px; }
+#question-editor { width: min(640px, calc(100% - 24px)); max-height: 90vh; border: 1px solid var(--border); border-radius: 15px; padding: 20px; color: var(--ink); }
+#question-editor::backdrop { background: #182d27a0; }
+.editor-heading { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
+.editor-heading h2 { font-size: 21px; margin: 0; }
+.editor-heading p { margin: 3px 0 8px; }
+.editor-field { display: grid; gap: 4px; margin: 8px 0; font-size: 14px; }
+.editor-field input, .editor-field textarea, .editor-field select { width: 100%; font: inherit; padding: 7px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--ink); }
+.editor-field textarea { min-height: 64px; }
+#editor-fields fieldset { min-width: 0; margin: 12px 0 0; border: 1px solid var(--border); border-radius: 8px; }
+.editor-actions { display: flex; margin-top: 15px; }
 .download-zone { margin-top: auto; padding-top: 14px; }
 .download-note { margin: 8px 0 0; }
 .progress-area { margin: 0 0 8px; }

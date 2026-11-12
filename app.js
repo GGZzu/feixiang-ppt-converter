@@ -26,6 +26,8 @@
   let coverVersion = 0;
   let pendingCover = Promise.resolve(null);
   let exportJob = null;
+  let questionDraft = null;
+  let previewIndex = 0;
 
   function chooseTab(name, focus = false) {
     for (const id of tabIds) {
@@ -47,6 +49,7 @@
 
   function clearLesson() {
     lesson = null;
+    previewIndex = 0;
     coverVersion++;
     pendingCover = Promise.resolve(null);
     get('cover-file').value = '';
@@ -55,7 +58,7 @@
     get('preview-empty').hidden = false;
     get('preview-desc').textContent = '导入后可试选一道题，确认反馈。';
     get('export').disabled = true;
-    get('export-note').textContent = '下载后用桌面版 PowerPoint 从第一页放映。';
+    get('export-note').textContent = '下载后请用课堂电脑上的演示软件从第一页试放。';
     showStatus();
   }
 
@@ -68,11 +71,11 @@
 
   function renderPreview(data) {
     const preview = get('preview-ready');
-    const q = data.qs[0];
+    const q = data.qs[previewIndex];
     get('preview-empty').hidden = true;
     preview.hidden = false;
     preview.style.setProperty('--source-canvas', '#' + data.c.canvas);
-    get('preview-desc').textContent = '试选第一题，查看对应反馈。';
+    get('preview-desc').textContent = '试选第 ' + (previewIndex + 1) + ' 题，查看对应反馈。';
     get('lesson-name').textContent = data.brand;
     const facts = [data.levelCount + ' 关', data.qs.length + ' 题'];
     if (data.scored) facts.push('累计计分');
@@ -98,6 +101,99 @@
       choices.append(button);
     }
     get('preview-question').replaceChildren(element('h3', q.title), choices, feedback);
+  }
+
+  function drawEditorFields() {
+    const index = Number(get('editor-select').value);
+    const question = questionDraft[index];
+    const fields = get('editor-fields');
+    function field(parent, label, object, key, limit, required = false) {
+      const row = element('label', label, 'editor-field');
+      const input = document.createElement(limit > 64 ? 'textarea' : 'input');
+      input.value = object[key];
+      input.maxLength = limit;
+      input.required = required;
+      input.addEventListener('input', () => {
+        object[key] = input.value;
+        get('editor-error').hidden = true;
+      });
+      row.append(input);
+      parent.append(row);
+    }
+    fields.replaceChildren();
+    field(fields, '题干', question, 'title', 64, true);
+    field(fields, '情境说明', question, 'copy', 300);
+    for (const [i, option] of question.options.entries()) {
+      const group = document.createElement('fieldset');
+      group.append(element('legend', '选项 ' + String.fromCharCode(65 + i)));
+      field(group, '选项文字', option, 'text', 180, true);
+      field(group, '反馈', option, 'result', 240);
+      field(group, '提示', option, 'tip', 180);
+      if (option.points !== null) {
+        const row = element('label', '分值', 'editor-field');
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.min = '-500';
+        input.max = '500';
+        input.step = '1';
+        input.required = true;
+        input.value = option.points;
+        input.addEventListener('input', () => {
+          option.points = input.valueAsNumber;
+          get('editor-error').hidden = true;
+        });
+        row.append(input);
+        group.append(row);
+      }
+      fields.append(group);
+    }
+  }
+
+  function openEditor() {
+    if (!lesson || exportJob) return;
+    questionDraft = structuredClone(lesson.qs);
+    const select = get('editor-select');
+    select.replaceChildren(...questionDraft.map((question, index) => {
+      const option = element('option', (index + 1) + '. ' + question.title);
+      option.value = String(index);
+      return option;
+    }));
+    select.value = String(previewIndex);
+    get('editor-error').hidden = true;
+    drawEditorFields();
+    get('question-editor').showModal();
+  }
+
+  function applyEditor(event) {
+    event.preventDefault();
+    for (const [i, question] of questionDraft.entries()) {
+      const invalid = !question.title.trim() || question.options.some((option) =>
+        !option.text.trim() ||
+        (option.points !== null && (!Number.isSafeInteger(option.points) || Math.abs(option.points) > 500)) ||
+        (!option.result.trim() && !option.tip.trim() && option.correct === null && option.points === null));
+      if (!invalid) continue;
+      get('editor-select').value = String(i);
+      drawEditorFields();
+      const error = get('editor-error');
+      error.textContent = '请检查第 ' + (i + 1) + ' 题的题干、选项、反馈或分值。';
+      error.hidden = false;
+      return;
+    }
+    for (const question of questionDraft) {
+      question.title = question.title.trim();
+      question.copy = question.copy.trim();
+      for (const option of question.options) {
+        option.text = option.text.trim();
+        option.result = option.result.trim();
+        option.tip = option.tip.trim();
+      }
+    }
+    lesson = { ...lesson, qs: questionDraft };
+    previewIndex = Number(get('editor-select').value);
+    get('question-editor').close();
+    renderPreview(lesson);
+    checkPlan();
+    if (!get('export').disabled) showStatus('已应用修改，导出的所有答题路线会一起更新。');
   }
 
   function imageURL(value) {
@@ -257,7 +353,7 @@
   }
 
   function setBusy(active) {
-    for (const id of ['demo', 'source', 'analyze', 'paste-tab', 'file-tab', 'browse', 'cover-file', 'use-timing']) {
+    for (const id of ['demo', 'source', 'analyze', 'paste-tab', 'file-tab', 'browse', 'cover-file', 'use-timing', 'edit-questions']) {
       get(id).disabled = active;
     }
     get('export').disabled = active || !lesson;
@@ -364,6 +460,11 @@
     loadFile(event.dataTransfer.files[0]);
   });
   get('cover-file').addEventListener('change', (event) => addCover(event.target.files[0]));
+  get('edit-questions').addEventListener('click', openEditor);
+  get('editor-select').addEventListener('change', drawEditorFields);
+  get('editor-cancel').addEventListener('click', () => get('question-editor').close());
+  get('question-editor').addEventListener('close', () => { questionDraft = null; });
+  get('question-form').addEventListener('submit', applyEditor);
   get('use-timing').addEventListener('change', () => {
     if (!lesson) return;
     renderPreview(lesson);

@@ -8,11 +8,11 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; worker-src 'self'; connect-src 'self' https://*.fbcontent.cn; base-uri 'none'; form-action 'none'; object-src 'none'">
   <meta name="theme-color" content="#f6f8f6">
   <title>飞象课件转互动 PPT</title>
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./style.css?v=2">
   <script defer src="./acorn.js"></script>
   <script defer src="./model.js"></script>
   <script defer src="./pptx.js"></script>
-  <script defer src="./app.js"></script>
+  <script defer src="./app.js?v=2"></script>
 </head>
 <body>
   <header class="top">
@@ -101,6 +101,7 @@
           <p class="lesson-name" id="lesson-name"></p>
           <div class="facts" id="facts"></div>
           <div class="preview-question" id="preview-question"></div>
+          <button type="button" class="button secondary small" id="edit-questions">编辑题目与反馈</button>
         </div>
         <div class="download-zone">
           <div id="progress-area" class="progress-area" hidden>
@@ -111,7 +112,7 @@
             <button class="button primary" type="button" id="export" disabled>下载互动 PPT</button>
             <button class="button secondary" type="button" id="cancel" hidden>取消</button>
           </div>
-          <p class="muted download-note" id="export-note" aria-live="polite">下载后用桌面版 PowerPoint 从第一页放映。</p>
+          <p class="muted download-note" id="export-note" aria-live="polite">下载后请用课堂电脑上的演示软件从第一页试放。</p>
         </div>
       </section>
     </div>
@@ -129,10 +130,26 @@
       <details>
         <summary>PPT 下载后怎么用？</summary>
         <p>用桌面版 Microsoft PowerPoint 打开文件，从第一页放映，使用课件上的按钮前进。一个文件会包含多条答题路线，放映只会经过当前路线。</p>
+        <p>题干、选项和反馈可在导出前统一修改，所有答题路线会一起更新。用 WPS 修改 PPT 后，请从第一页试放，检查按钮和自动翻页。</p>
       </details>
     </section>
   </main>
 
+  <dialog id="question-editor" aria-labelledby="editor-title">
+    <form id="question-form">
+      <div class="editor-heading">
+        <div>
+          <h2 id="editor-title">编辑题目与反馈</h2>
+          <p class="muted">应用后，同一道题在所有答题路线中的内容会一起更新。</p>
+        </div>
+        <button type="button" class="button secondary small" id="editor-cancel">取消</button>
+      </div>
+      <label class="editor-field">选择题目 <select id="editor-select"></select></label>
+      <div id="editor-fields"></div>
+      <p id="editor-error" role="alert" class="status" data-state="error" hidden></p>
+      <div class="editor-actions"><button type="submit" class="button primary">应用修改</button></div>
+    </form>
+  </dialog>
   <footer class="wrap footer"><span>课件转换</span><span>独立工具 · 适配飞象老师导出的 HTML</span></footer>
   <noscript>需要启用浏览器的 JavaScript 才能生成 PPT。</noscript>
 </body>
