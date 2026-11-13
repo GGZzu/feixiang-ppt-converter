@@ -118,14 +118,9 @@
       text(state.score, 1.92, 2.55, 4.0, 0.64, 41, { bold: true });
       text('总积分', 1.92, 3.23, 4.0, 0.26, 13);
     }
-    const cards = data.branching ? [['活动状态', '已完成']] : [['完成关卡', data.levelCount + ' / ' + data.levelCount]];
-    if (data.countsCorrect) cards.unshift([data.originalEmotionLayout ? '理性选择' : '正确题数',
-      state.correct + ' / ' + data.qs.length]);
-    if (data.countsCorrect && data.rank.length) {
-      const percent = Math.round(state.correct / data.qs.length * 100);
-      const name = data.rank.find(([minimum]) => percent >= minimum)?.[1];
-      if (name) cards.push(['成长等级', name]);
-    }
+    const accuracy = ClassroomProject.accuracyResults(data, state.correct);
+    const status = data.branching ? ['活动状态', '已完成'] : ['完成关卡', data.levelCount + ' / ' + data.levelCount];
+    const cards = accuracy.length ? [accuracy[0], status, ...accuracy.slice(1)] : [status];
     cards.forEach(([label, value], index) => {
       const x = 1.92 + index * 3.16;
       box(x, 3.64, 3.01, 0.86, 'FFFFFF');
@@ -237,7 +232,7 @@
       text(option.result, 0.85, 5.09, 7.66, option.tip ? 0.45 : 0.89, 13);
       if (option.tip) text((data.originalEmotionLayout ? '情绪调节提示：' : '') + option.tip,
         0.85, 5.56, 7.66, 0.46, 13);
-      if (data.scored) {
+      if (data.scored && option.points !== null) {
         const label = option.points ? (option.points > 0 ? '+' : '') + option.points + ' 分' : '本题不加分';
         text(label, 0.85, 6.08, 3.0, 0.23, 12, { bold: true, color: accent });
       }

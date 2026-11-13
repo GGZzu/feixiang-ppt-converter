@@ -8,15 +8,15 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; worker-src 'self'; connect-src 'self' https://*.fbcontent.cn; base-uri 'none'; form-action 'none'; object-src 'none'">
   <meta name="theme-color" content="#f6f8f6">
   <title>飞象课件转互动 PPT</title>
-  <link rel="stylesheet" href="./style.css?v=3">
+  <link rel="stylesheet" href="./style.css?v=4">
   <script defer src="./acorn.js"></script>
   <script defer src="./model.js"></script>
-  <script defer src="./pptx.js?v=3"></script>
-  <script defer src="./project.js?v=3"></script>
+  <script defer src="./pptx.js?v=4"></script>
+  <script defer src="./project.js?v=4"></script>
   <script defer src="./qrcode.js"></script>
   <script defer src="./fflate.js"></script>
-  <script defer src="./play.js?v=3"></script>
-  <script defer src="./app.js?v=3"></script>
+  <script defer src="./play.js?v=4"></script>
+  <script defer src="./app.js?v=4"></script>
 </head>
 <body>
   <header class="top">
@@ -32,7 +32,7 @@
   <main class="wrap">
     <section class="intro" aria-labelledby="page-title">
       <h1 id="page-title">飞象课件转互动 PPT</h1>
-      <p>把飞象老师生成的 HTML 转成课堂可点选、可反馈的 PowerPoint。<br class="desktop-break">下载后带到教室，打开 PPT 就能离线放映。</p>
+      <p>导入飞象老师的课件，或新建选择、配对和排序活动。<br class="desktop-break">分享给学生在线参与，也可以下载 PPT 离线放映。</p>
       <div class="info-note"><span class="status-dot" aria-hidden="true"></span>无需登录 · 课件源码在本机处理</div>
     </section>
 
@@ -41,7 +41,7 @@
         <div class="panel-heading">
           <div>
             <h2 id="import-title">导入课件</h2>
-            <p>使用飞象老师提供的 HTML 源码或文件。</p>
+            <p>从飞象老师的 HTML 开始，或新建自己的活动。</p>
           </div>
         </div>
         <div class="project-actions">
@@ -132,6 +132,14 @@
 
     <section id="help" class="help" aria-label="使用说明">
       <details>
+        <summary>试一份带分支的课堂活动</summary>
+        <p>《小组讨论卡住了》包含情境选择、排序和配对。试完可以打开示例项目，换成自己班的情境。</p>
+        <div class="project-actions">
+          <a class="button secondary small example-link" href="#class-example">试玩学生版</a>
+          <a class="button secondary small example-link" href="./classroom-example.json?v=4" download="小组讨论卡住了-课件项目.json">下载示例项目</a>
+        </div>
+      </details>
+      <details>
         <summary>从飞象老师哪里复制代码？</summary>
         <p>在飞象老师打开你生成的课件，复制它提供的完整 HTML 源码，或者下载 HTML 文件。回到这里粘贴源码并识别，或直接选择文件。飞象的分享链接需要先打开后取到源码。</p>
       </details>
@@ -142,7 +150,7 @@
       </details>
       <details>
         <summary>PPT 下载后怎么用？</summary>
-        <p>用桌面版 Microsoft PowerPoint 打开文件，从第一页放映，使用课件上的按钮前进。一个文件会包含多条答题路线，放映只会经过当前路线。</p>
+        <p>用桌面版 PowerPoint 或 WPS 演示打开文件，从第一页放映，使用课件上的按钮前进。一个文件会包含多条答题路线，放映只会经过当前路线。</p>
         <p>题干、选项和反馈可在导出前统一修改，所有答题路线会一起更新。用 WPS 修改 PPT 后，请从第一页试放，检查按钮和自动翻页。</p>
       </details>
     </section>

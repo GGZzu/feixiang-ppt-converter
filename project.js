@@ -106,9 +106,9 @@
     const branching = options.some(option => option.next);
     const countsCorrect = scoringEnabled && !branching && qs.every(q => q.type === 'choice')
       && options.every(option => option.correct !== null);
-    const rank = countsCorrect ? list(raw.rank).slice(0, 10)
+    const rank = list(raw.rank).slice(0, 10)
       .filter(entry => Array.isArray(entry) && Number.isFinite(entry[0]) && entry[0] >= 0 && entry[0] <= 100)
-      .map(entry => [entry[0], trim(entry[1], 45)]).sort((a, b) => b[0] - a[0]) : [];
+      .map(entry => [entry[0], trim(entry[1], 45)]).filter(entry => entry[1]).sort((a, b) => b[0] - a[0]);
     const pairs = values => list(values).slice(0, 6).filter(Array.isArray).map(v => [trim(v[0], 100), trim(v[1], 180)]);
     return {
       qs, c: colors, levelCount: groupTotals.size, originalEmotionLayout: raw.originalEmotionLayout === true,
@@ -124,6 +124,15 @@
   function nextIndex(data, index, option) {
     if (option?.next === 'end') return data.qs.length;
     return option?.next ? data.qs.findIndex(q => q.id === option.next) : index + 1;
+  }
+
+  function accuracyResults(data, correct) {
+    if (!data.countsCorrect) return [];
+    const results = [[data.originalEmotionLayout ? '理性选择' : '正确题数', correct + ' / ' + data.qs.length]];
+    const percentage = Math.round(correct / data.qs.length * 100);
+    const rank = data.rank.find(([minimum]) => percentage >= minimum);
+    if (rank) results.push(['成长等级', rank[1]]);
+    return results;
   }
 
   function preparePpt(data) {
@@ -215,5 +224,8 @@
     return unpack(new TextDecoder().decode(raw));
   }
 
-  global.ClassroomProject = { MAX_FILE, TYPES, blankQuestion, newLesson, normalize, nextIndex, preparePpt, pack, unpack, webToken, readToken };
+  global.ClassroomProject = {
+    MAX_FILE, TYPES, blankQuestion, newLesson, normalize, nextIndex, accuracyResults,
+    preparePpt, pack, unpack, webToken, readToken,
+  };
 })(globalThis);

@@ -98,7 +98,8 @@
       button.addEventListener('click', () => {
         for (const item of choices.children) item.setAttribute('aria-pressed', String(item === button));
         const result = option.result || option.tip || (option.correct === null ? '已选 ' + letter : option.correct ? '回答正确' : '再想一想');
-        const points = option.points !== null ? ' · ' + (option.points > 0 ? '+' : '') + option.points + ' 分' : '';
+        const points = data.scored && option.points !== null
+          ? ' · ' + (option.points > 0 ? '+' : '') + option.points + ' 分' : '';
         feedback.textContent = result + points;
         feedback.hidden = false;
       });
@@ -142,6 +143,7 @@
     }
     fields.replaceChildren();
     field(fields, '题干', question, 'title', 64, true);
+    field(fields, '关卡名称', question, 'level', 64);
     field(fields, '情境说明', question, 'copy', 300);
     if (question.type !== 'choice') {
       const matching = question.type === 'match';
@@ -224,7 +226,8 @@
       fields.append(group);
     }
     if (question.options.length < 4) addEditorButton(fields, '添加选项', () => {
-      question.options.push({ text: '', result: '', tip: '', heading: '', correct: null, points: null, next: '' });
+      const points = get('project-scoring').checked ? 0 : null;
+      question.options.push({ text: '', result: '', tip: '', heading: '', correct: null, points, next: '' });
       drawEditorFields();
     });
   }
@@ -428,7 +431,7 @@
       clearLesson();
       get('source').value = '';
       loadLesson(project);
-      showStatus('已打开课件项目，可继续编辑或导出。');
+      if (!get('export').disabled) showStatus('已打开课件项目，可继续编辑或导出。');
     } catch (error) {
       if (version === sourceVersion) showStatus(error.message, 'error');
     }
@@ -506,7 +509,9 @@
           return { ...option, next: 'end' };
         }),
       });
-      const context = index === 0 ? {} : { intro: '', rules: [], methods: [], tips: [], endCopy: '' };
+      const context = index === 0 ? {} : {
+        intro: '', rules: [], methods: [], tips: [], rank: [], endTitle: '活动完成', endCopy: '',
+      };
       const data = ClassroomProject.normalize({ ...activeLesson(), ...context, qs });
       const url = new URL(location.pathname, location.origin);
       url.hash = 'play=' + await ClassroomProject.webToken(data);
@@ -590,7 +595,7 @@
       const data = ClassroomProject.preparePpt(activeLesson());
       const cover = await pendingCover;
       if (exportJob !== job) return;
-      job.worker = new Worker('./export-worker.js?v=3');
+      job.worker = new Worker('./export-worker.js?v=4');
       job.worker.addEventListener('message', ({ data: result }) => {
         if (exportJob !== job) return;
         if (result.type === 'progress') setProgress(result.value, result.label);

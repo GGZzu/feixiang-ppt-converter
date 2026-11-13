@@ -29,6 +29,7 @@
   function present(lesson) {
     let index = 0;
     let score = 0;
+    let correct = 0;
     let timer;
     function frame(title, message, label = '') {
       const pane = node('article', '', 'panel play-panel');
@@ -40,6 +41,7 @@
       clearTimeout(timer);
       index = 0;
       score = 0;
+      correct = 0;
       const pane = frame(lesson.title, lesson.intro, '课堂活动 · ' + lesson.qs.length + ' 题');
       for (const [title, description] of lesson.rules) pane.append(node('p', title + ' ' + description));
       pane.append(button('开始活动', render, true));
@@ -52,6 +54,9 @@
     function render() {
       if (index >= lesson.qs.length) {
         const pane = frame(lesson.endTitle, lesson.endCopy, lesson.scored ? '本次积分 ' + score : '已完成');
+        for (const [label, value] of ClassroomProject.accuracyResults(lesson, correct)) {
+          pane.append(node('p', label + ' ' + value, 'play-result'));
+        }
         for (const tip of lesson.tips) pane.append(node('p', tip));
         pane.append(button('再试一次', start));
         return;
@@ -72,11 +77,13 @@
         optionButtons.forEach(control => { control.disabled = true; });
         [...rating.children].forEach(control => { control.disabled = true; });
         if (lesson.scored) score += option.points ?? 0;
+        if (option.correct === true) correct++;
         const next = ClassroomProject.nextIndex(lesson, index, option);
         response.hidden = false;
         const fallback = option.correct === null ? '已记录你的选择。' : option.correct ? '这个选择合适。' : '可以再想一想。';
         response.append(node('p', option.result || fallback), node('p', option.tip));
         if (lesson.scored && option.points !== null) response.append(node('p', '本题 ' + option.points + ' 分', 'muted'));
+        if (lesson.advanceMs) response.append(node('p', lesson.advanceMs / 1000 + ' 秒后自动继续', 'muted'));
         const onward = button(next === lesson.qs.length ? '完成活动' : '继续', () => advance(next), true);
         response.append(onward);
         onward.focus();
@@ -218,24 +225,33 @@
 
   let dispose = null;
   let revision = 0;
+  const scriptUrl = document.currentScript.src;
+  async function loadExample() {
+    const response = await fetch(new URL('./classroom-example.json?v=4', scriptUrl));
+    if (!response.ok) throw Error('示例暂时无法打开。');
+    return ClassroomProject.unpack(await response.text());
+  }
+
   function openFromLocation() {
     const turn = ++revision;
     dispose?.();
     dispose = null;
     const hash = location.hash;
-    const playing = hash.startsWith('#play=');
+    const isExample = hash === '#class-example';
+    const playing = isExample || hash.startsWith('#play=');
     document.querySelector('main').hidden = playing;
     document.querySelector('header').hidden = playing;
     mount.hidden = !playing;
     if (!playing) return;
     mount.textContent = '正在打开课堂活动…';
-    ClassroomProject.readToken(hash.slice(6)).then(lesson => {
+    (isExample ? loadExample() : ClassroomProject.readToken(hash.slice(6))).then(lesson => {
       if (turn === revision) dispose = present(lesson);
     }).catch(() => {
       if (turn !== revision) return;
       const retry = node('a', '返回课件工具', 'button secondary');
       retry.href = location.pathname;
-      mount.replaceChildren(node('h1', '活动链接无法打开'), node('p', '请向老师获取完整的活动链接。'), retry);
+      const message = isExample ? '请刷新页面后再打开示例。' : '请向老师获取完整的活动链接。';
+      mount.replaceChildren(node('h1', '活动链接无法打开'), node('p', message), retry);
     });
   }
   window.addEventListener('hashchange', openFromLocation);

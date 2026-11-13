@@ -98,7 +98,7 @@ input[type="checkbox"] { accent-color: var(--accent); }
 #question-editor::backdrop, #share-dialog::backdrop { background: #182d27a0; }
 .project-actions { display: flex; gap: 7px; flex-wrap: wrap; margin: 8px 0; }
 .editor-add { margin: 6px 0; }
-#play-link { text-decoration: none; display: inline-flex; align-items: center; }
+#play-link, .example-link { text-decoration: none; display: inline-flex; align-items: center; }
 #share-scope { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; color: var(--ink); background: white; }
 #share-qr { display: block; width: min(100%, 430px); height: auto; margin: 10px auto; image-rendering: pixelated; }
 #classroom-player { padding: clamp(20px, 6vw, 65px) 0; max-width: 800px; }
