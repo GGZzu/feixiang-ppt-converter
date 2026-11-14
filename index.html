@@ -8,16 +8,18 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; frame-src 'self'; worker-src 'self'; connect-src 'self' https://*.fbcontent.cn; base-uri 'none'; form-action 'none'; object-src 'none'">
   <meta name="theme-color" content="#f6f8f6">
   <title>飞象课件转互动 PPT</title>
-  <link rel="stylesheet" href="./style.css?v=4">
+  <link rel="stylesheet" href="./style.css?v=8">
   <script defer src="./acorn.js"></script>
-  <script defer src="./model.js"></script>
-  <script defer src="./pptx.js?v=6"></script>
-  <script defer src="./project.js?v=4"></script>
+  <script defer src="./model.js?v=8"></script>
+  <script defer src="./project.js?v=8"></script>
+  <script defer src="./curriculum.js?v=8"></script>
+  <script defer src="./pptx.js?v=8"></script>
   <script defer src="./qrcode.js"></script>
   <script defer src="./fflate.js"></script>
   <script defer src="./play.js?v=4"></script>
-  <script defer src="./replica.js?v=7"></script>
-  <script defer src="./app.js?v=7"></script>
+  <script defer src="./replica.js?v=8"></script>
+  <script defer src="./scenario.js?v=8"></script>
+  <script defer src="./app.js?v=8"></script>
 </head>
 <body>
   <header class="top">
@@ -110,6 +112,7 @@
         <div class="preview ready" id="preview-ready" hidden>
           <p class="lesson-name" id="lesson-name"></p>
           <div class="facts" id="facts"></div>
+          <div id="compatibility" class="compatibility" aria-live="polite"></div>
           <div class="preview-question" id="preview-question"></div>
           <button type="button" class="button secondary small" id="edit-questions">编辑题目与反馈</button>
         </div>
@@ -119,15 +122,22 @@
             <progress id="progress" max="100" value="0" aria-label="导出进度"></progress>
           </div>
           <div class="project-actions">
+            <button type="button" class="button secondary small" id="edit-classroom" disabled>添加课堂页</button>
             <button type="button" class="button secondary small" id="save-project" disabled>保存课件项目</button>
             <button type="button" class="button secondary small" id="share-activity" disabled>试玩与分享网页</button>
           </div>
+          <fieldset id="export-mode" class="export-mode" hidden disabled>
+            <legend>互动版本</legend>
+            <label><input type="radio" name="lesson-mode" value="full" checked> 完整互动</label>
+            <label><input type="radio" name="lesson-mode" value="light"> 轻量讨论</label>
+            <p id="mode-note" class="muted"></p>
+          </fieldset>
           <div class="download-actions">
             <button class="button primary" type="button" id="export-replica" hidden>下载宽屏互动 PPT</button>
             <button class="button primary" type="button" id="export" disabled>下载互动 PPT</button>
             <button class="button secondary" type="button" id="cancel" hidden>取消</button>
           </div>
-          <p class="muted download-note" id="replica-note" hidden>固定按 16:9 投影比例导出，保留原课件的颜色、插图和答题动画。放映时可直接点选。</p>
+          <p class="muted download-note" id="replica-note" hidden>用桌面 WPS 或 PowerPoint 从第一页放映，课堂页可直接编辑。</p>
           <p class="muted download-note" id="export-note" aria-live="polite">下载后请用课堂电脑上的演示软件从第一页试放。</p>
         </div>
       </section>
@@ -149,13 +159,13 @@
       <details>
         <summary>能保留哪些互动？</summary>
         <p>目前支持源码中写明题目、选项和反馈或评分规则的闯关、情境选择和选择题。可导出点选、分支反馈、累计计分、结算，以及识别到的定时翻页。含情绪强度的兼容课件可在 PPT 内点选 1 到 10 分。</p>
-        <p>兼容的飞象情绪闯关课件可下载宽屏互动版。每次固定导出为 16:9，支持点选高亮、提示动画和自动进下一题。网页上的鼠标悬停效果及其他自定义动画可能需要原网页。</p>
+        <p>识别后可查看这份课件能保留哪些玩法。兼容的飞象课件可按固定 16:9 导出宽屏互动版。轻量讨论保留选项和反馈，省去累计得分。</p>
         <p>新建的配对和排序活动在网页上可以拖放或点选，在离线 PPT 里用逐步点选完成。</p>
       </details>
       <details>
         <summary>PPT 下载后怎么用？</summary>
         <p>用桌面版 PowerPoint 或 WPS 演示打开文件，从第一页放映，使用课件上的按钮前进。一个文件会包含多条答题路线，放映只会经过当前路线。</p>
-        <p>题干、选项和反馈可在导出前统一修改，所有答题路线会一起更新。用 WPS 修改 PPT 后，请从第一页试放，检查按钮和自动翻页。</p>
+        <p>点「添加课堂页」就能写游戏前的导入页和游戏后的讨论页。添加后，游戏结算会出现「继续上课」。保存课件项目，下次可在网站继续改。</p>
       </details>
     </section>
   </main>
@@ -186,6 +196,19 @@
       <div id="editor-fields"></div>
       <p id="editor-error" role="alert" class="status" data-state="error" hidden></p>
       <div class="editor-actions"><button type="submit" class="button primary">应用修改</button></div>
+    </form>
+  </dialog>
+  <dialog id="classroom-editor" aria-labelledby="classroom-editor-title">
+    <form id="classroom-form">
+      <div class="editor-heading">
+        <div>
+          <h2 id="classroom-editor-title">添加课堂页</h2>
+          <p class="muted">活动后加了页面，结算页会出现「继续上课」。</p>
+        </div>
+        <button type="button" class="button secondary small" id="classroom-cancel">取消</button>
+      </div>
+      <div id="classroom-fields"></div>
+      <div class="editor-actions"><button type="submit" class="button primary">应用课堂页</button></div>
     </form>
   </dialog>
   <dialog id="share-dialog" aria-labelledby="share-title">

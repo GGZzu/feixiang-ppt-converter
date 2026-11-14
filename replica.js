@@ -55,6 +55,7 @@
     '.summary .tips ul { margin:0; }',
     '.summary .tips li { margin:6px 0; }',
     '.toast { right:36px; bottom:27px; font-size:20px; }',
+    '.classroom-continue { background:var(--ink); color:#fff; border-color:var(--ink); }',
   ].join('\n');
 
   function read(source, data) {
@@ -97,8 +98,14 @@
     }
     const safeApp = copy(app);
     const safeToast = copy(toast);
-    if (!safeApp || !safeToast || !REQUIRED.every(id => safeApp.querySelector('#' + id))) return null;
-    return { app: safeApp, toast: safeToast, css, feedbackHint, hideMs };
+    if (!safeApp || !safeToast || !REQUIRED.every(id => safeApp.querySelector('#' + id)) ||
+      !safeApp.querySelector('#intro h1') || !safeApp.querySelector('#intro .panel p') ||
+      !safeApp.querySelector('#game .scene-card .next-row') || !safeApp.querySelector('#summary .result-grid') ||
+      !safeApp.querySelector('#summary #finalScore + *')) return null;
+    const initial = {
+      title: data.title, brand: data.brand, intro: data.intro,
+    };
+    return { app: safeApp, toast: safeToast, css, feedbackHint, hideMs, initial };
   }
 
   function sizeOf(el) {
@@ -154,7 +161,7 @@
     });
   }
 
-  function paint(doc, data, source, state) {
+  function paint(doc, data, source, state, settings) {
     const get = id => doc.getElementById(id);
     const put = (id, value) => { get(id).textContent = value; };
     const phase = state.kind;
@@ -171,6 +178,8 @@
     put('topScore', '积分：' + score);
     if (intro) return;
     if (end) {
+      const continuation = get('classroom-continue');
+      continuation.hidden = !settings.after.length;
       const accuracy = Math.round(state.correct / data.qs.length * 100);
       put('finalScore', score);
       put('rationalCount', state.correct + ' / ' + data.qs.length);
@@ -219,10 +228,14 @@
     if (feedback) {
       const tip = element('p');
       tip.append(element('b', '情绪调节提示：'), doc.createTextNode(option.tip));
-      f.append(element('h3', FEEDBACK[Number(option.correct)]), element('p', option.result), tip,
-        element('div', option.points ? '+' + option.points + ' 分' : '本题不加分', 'score'));
+      f.append(element('h3', FEEDBACK[Number(option.correct)]), element('p', option.result), tip);
+      if (data.scored) f.append(element('div', option.points ? '+' + option.points + ' 分' : '本题不加分', 'score'));
     }
-    put('hintText', feedback ? source.feedbackHint : rated ? RATED_HINT : INITIAL_HINT);
+    const manual = feedback && !data.advanceMs;
+    const next = get('manual-next');
+    next.hidden = !manual;
+    next.textContent = state.finishes ? '查看小结' : '下一题';
+    put('hintText', feedback ? (manual ? '讨论完毕后点按钮继续。' : source.feedbackHint) : rated ? RATED_HINT : INITIAL_HINT);
   }
 
   function makeOrder(data) {
@@ -232,7 +245,7 @@
     const intros = new Map([[0, 1]]);
     states.forEach((state, index) => {
       mapping[index + 1] = order.push(state);
-      if (state.kind === 'feedback') order.push(states[state.next - 1]);
+      if (state.kind === 'feedback' && data.advanceMs) order.push(states[state.next - 1]);
     });
     for (const state of states) {
       if (state.kind === 'end' && !intros.has(state.score)) {
@@ -243,7 +256,7 @@
     return { order, mapping, intros, start: mapping[states[0].start] };
   }
 
-  function fitStage(doc, data, source) {
+  function fitStage(doc, data, source, settings) {
     const app = doc.querySelector('.app');
     const testStates = [{ kind: 'intro' }, { kind: 'end', score: 9999, correct: data.qs.length }];
     for (const [question, q] of data.qs.entries()) {
@@ -251,7 +264,7 @@
       q.options.forEach((_, value) => testStates.push({ kind: 'feedback', question, value }));
     }
     const withinPage = state => {
-      paint(doc, data, source, state);
+      paint(doc, data, source, state, settings);
       const visible = doc.querySelector('#intro:not(.hidden), #game:not(.hidden), #summary:not(.hidden)');
       const bounds = sizeOf(visible);
       return bounds.y + bounds.h <= HEIGHT - 28;
@@ -265,7 +278,7 @@
     throw Error('有一页的文字超出了宽屏画面，无法完整导出。请缩短该页的长文字后重试。');
   }
 
-  async function render(source, data, cover, onProgress = () => {}, signal) {
+  async function render(source, data, cover, onProgress = () => {}, signal, settings = { before: [], after: [] }) {
     const { order, mapping, intros, start } = makeOrder(data);
     if (!cover) throw Error('没读到原封面。请在「封面和翻页」中选入同一张插图后重试。');
     const check = () => signal?.throwIfAborted();
@@ -273,7 +286,24 @@
     const coverUrl = await inlineImage(cover);
     const { frame, doc } = await createStage(source, coverUrl);
     try {
-      fitStage(doc, data, source);
+      const continueButton = Curriculum.button(doc);
+      doc.getElementById('restartBtn').parentNode.append(continueButton);
+      const next = doc.createElement('button');
+      next.id = 'manual-next';
+      doc.querySelector('.next-row').append(next);
+      if (data.title !== source.initial.title) doc.querySelector('#intro h1').textContent = data.title;
+      if (data.brand !== source.initial.brand) doc.querySelector('.brand').textContent = data.brand;
+      if (data.intro !== source.initial.intro) doc.querySelector('#intro .panel p').textContent = data.intro;
+      if (!data.scored) {
+        doc.getElementById('topScore').hidden = true;
+        doc.getElementById('scoreSide').hidden = true;
+        doc.getElementById('finalScore').hidden = true;
+        doc.getElementById('finalScore').nextElementSibling.hidden = true;
+        const grid = doc.querySelector('.result-grid');
+        grid.style.gridTemplateColumns = '1fr';
+        for (const id of ['rationalCount', 'rankText']) doc.getElementById(id).parentNode.hidden = true;
+      }
+      fitStage(doc, data, source, settings);
       const whole = { x: 0, y: 0, w: WIDTH, h: HEIGHT };
       const encoder = new XMLSerializer();
       const canvas = document.createElement('canvas');
@@ -314,7 +344,7 @@
       }
       async function base(state, key) {
         if (cache.has(key)) return cache.get(key);
-        paint(doc, data, source, state);
+        paint(doc, data, source, state, settings);
         const visible = doc.querySelector('#intro:not(.hidden), #game:not(.hidden), #summary:not(.hidden)');
         const { y, h } = sizeOf(visible);
         if (y + h > HEIGHT - 1) throw Error('有一页的文字超出了宽屏画面，暂时无法完整导出原样版。');
@@ -328,20 +358,21 @@
         const topKey = 'top/' + score;
         const sideKey = 'side/' + score;
         if (!cache.has(topKey)) {
-          paint(doc, data, source, { kind: 'question', question: 0, score });
+          paint(doc, data, source, { kind: 'question', question: 0, score }, settings);
           hide(mini, false);
           hide(side, false);
           coverImg.removeAttribute('src');
           const img = await raster();
           await capture(topKey, img, snap(mini));
-          await capture(sideKey, img, snap(side));
+          if (data.scored) await capture(sideKey, img, snap(side));
         }
         return [cache.get(topKey), cache.get(sideKey)];
       }
       async function toastLayer(correct) {
         const key = 'toast/' + correct;
         if (cache.has(key)) return cache.get(key);
-        toast.textContent = TOASTS[Number(correct)];
+        toast.textContent = data.scored ? TOASTS[Number(correct)] :
+          correct ? '选择有效，留意这次应对方法。' : TOASTS[0];
         toast.style.transition = 'none';
         toast.classList.add('show');
         const rect = snap(toast);
@@ -350,7 +381,7 @@
         return layer;
       }
       function actions(state) {
-        paint(doc, data, source, state);
+        paint(doc, data, source, state, settings);
         function hit(el, target, name) {
           return { ...sizeOf(el), target, name };
         }
@@ -358,8 +389,10 @@
         if (state.kind === 'end') return [
           hit(doc.getElementById('restartBtn'), start, '再玩一次'),
           hit(doc.getElementById('backIntroBtn'), intros.get(state.score), '返回说明'),
+          ...(settings.after.length ? [hit(continueButton, 'classroom', '继续上课')] : []),
         ];
-        if (state.kind === 'feedback') return [];
+        if (state.kind === 'feedback') return data.advanceMs ? [] :
+          [hit(next, mapping[state.next], state.finishes ? '查看小结' : '下一题')];
         const buttons = [...doc.querySelectorAll('#ratingOptions button')].map((el, index) =>
           hit(el, mapping[state.ratings[index]], '情绪强度 ' + (index + 1)));
         if (state.kind === 'rated') buttons.push(...[...doc.querySelectorAll('#options button')].map((el, index) =>
@@ -378,20 +411,24 @@
         const background = await base(state, key);
         const [topScore, sideScore] = await scores(score);
         const inGame = state.kind !== 'intro' && state.kind !== 'end';
-        const layers = inGame ? [background, topScore, sideScore] : [background, topScore];
+        const layers = [background, topScore];
+        if (inGame && sideScore) layers.push(sideScore);
         const hits = actions(state);
         if (inGame && sizeOf(sceneBounds).y + sizeOf(sceneBounds).h > HEIGHT) throw Error('题目内容超出了宽屏画面。');
-        if (feedback) layers.push(await toastLayer(option.correct));
+        if (feedback) layers.push({ ...await toastLayer(option.correct), label: '答题提示', effect: 'toast' });
         const name = state.kind === 'intro' ? '开始闯关' : state.kind === 'end' ? '闯关结算'
           : '第 ' + (state.question + 1) + ' 题 · ' + q.title + (feedback ? ' · 答题反馈' : '');
-        unique.set(state, { name, layers, hits, feedback });
+        unique.set(state, { name, layers, hits, auto: Boolean(feedback && data.advanceMs) });
         if (index % 8 === 0 || index + 1 === order.length) {
           onProgress(Math.round((index + 1) / order.length * 64), '正在生成 16:9 宽屏画面');
           await new Promise(resolve => setTimeout(resolve, 0));
         }
       }
-      return { media, width: WIDTH, height: HEIGHT, title: data.brand, advanceMs: data.advanceMs, hideMs: source.hideMs,
-        slides: order.map(state => unique.get(state)) };
+      onProgress(64, '正在生成 16:9 宽屏画面');
+      return Curriculum.surround({
+        media, width: WIDTH, height: HEIGHT, title: data.brand, colors: data.c, advanceMs: data.advanceMs,
+        hideMs: source.hideMs, slides: order.map(state => unique.get(state)),
+      }, settings);
     } finally {
       frame.remove();
     }

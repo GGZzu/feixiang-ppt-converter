@@ -87,6 +87,8 @@ input[type="checkbox"] { accent-color: var(--accent); }
 .lesson-name { font-size: 16px; font-weight: 750; margin: 0 0 8px; overflow-wrap: anywhere; }
 .facts { display: flex; flex-wrap: wrap; gap: 5px; }
 .facts span { background: #fff; border: 1px solid #d5e1da; border-radius: 5px; padding: 2px 6px; font-size: 12px; color: var(--muted); }
+.compatibility { border-left: 2px solid #9bb7aa; margin: 11px 0 10px; padding-left: 10px; font-size: 13px; }
+.compatibility p { margin: 3px 0; }
 .preview-question { margin-top: 12px; }
 .preview-question h3 { font-size: 14px; margin: 0 0 6px; }
 .choices { display: grid; gap: 5px; }
@@ -94,8 +96,8 @@ input[type="checkbox"] { accent-color: var(--accent); }
 .choices button:hover, .choices button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
 .choice-result { font-size: 12px; margin: 8px 0 0; color: var(--accent-dark); }
 #edit-questions { margin-top: 10px; }
-#question-editor, #share-dialog { width: min(640px, calc(100% - 24px)); max-height: 90vh; border: 1px solid var(--border); border-radius: 15px; padding: 20px; color: var(--ink); }
-#question-editor::backdrop, #share-dialog::backdrop { background: #182d27a0; }
+#question-editor, #share-dialog, #classroom-editor { width: min(640px, calc(100% - 24px)); max-height: 90vh; border: 1px solid var(--border); border-radius: 15px; padding: 20px; color: var(--ink); }
+#question-editor::backdrop, #share-dialog::backdrop, #classroom-editor::backdrop { background: #182d27a0; }
 .project-actions { display: flex; gap: 7px; flex-wrap: wrap; margin: 8px 0; }
 .editor-add { margin: 6px 0; }
 #play-link, .example-link { text-decoration: none; display: inline-flex; align-items: center; }
@@ -121,7 +123,14 @@ input[type="checkbox"] { accent-color: var(--accent); }
 .editor-field { display: grid; gap: 4px; margin: 8px 0; font-size: 14px; }
 .editor-field input, .editor-field textarea, .editor-field select { width: 100%; font: inherit; padding: 7px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--ink); }
 .editor-field textarea { min-height: 64px; }
-#editor-fields fieldset { min-width: 0; margin: 12px 0 0; border: 1px solid var(--border); border-radius: 8px; }
+#editor-fields fieldset, #classroom-fields fieldset { min-width: 0; margin: 12px 0 0; border: 1px solid var(--border); border-radius: 8px; }
+.classroom-section { margin: 15px 0; }
+.classroom-section h3 { margin: 0 0 4px; font-size: 15px; }
+.export-mode { border: 1px solid var(--border); margin: 10px 0; padding: 7px 10px 9px; border-radius: 9px; font-size: 14px; }
+.export-mode label { display: inline-flex; align-items: center; gap: 3px; margin-right: 13px; }
+.export-mode input { accent-color: var(--accent); }
+.export-mode p { margin: 4px 0 0; }
+.download-actions { flex-wrap: wrap; }
 .editor-actions { display: flex; margin-top: 15px; }
 .download-zone { margin-top: auto; padding-top: 14px; }
 .download-note { margin: 8px 0 0; }

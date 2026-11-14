@@ -58,9 +58,10 @@
     return { states, ordered, mapping };
   }
 
-  function slideTools(ppt, slide, colors, mapping) {
+  function slideTools(ppt, slide, colors, mapping, entry, classroom) {
     function jump(id) {
-      return id ? { hyperlink: { slide: mapping[id], tooltip: '点击继续' } } : {};
+      const destination = id === 'intro' ? entry : id === 'classroom' ? classroom : mapping[id];
+      return destination ? { hyperlink: { slide: destination, tooltip: '点击继续' } } : {};
     }
     function box(x, y, w, h, color, border = colors.border, id) {
       slide.addShape(ppt.ShapeType.rect, {
@@ -134,7 +135,8 @@
         text('• ' + tip, 2.08, 5.12 + i * 0.27, 8.99, 0.24, 12));
     }
     button('再玩一次', 1.92, 6.35, 1.5, 0.42, start);
-    button('返回说明', 3.54, 6.35, 1.5, 0.42, 1, 'FFFFFF');
+    button('返回说明', 3.54, 6.35, 1.5, 0.42, 'intro', 'FFFFFF');
+    if (data.classroom?.after.length) button('继续上课', 8.99, 6.35, 1.82, 0.42, 'classroom', c.highlight, c.ink);
   }
 
   function drawSidebar(data, state, score, tools) {
@@ -254,11 +256,18 @@
     ppt.layout = 'LAYOUT_WIDE';
     ppt.title = data.brand;
     ppt.subject = '互动教学课件';
+    const { before, after } = Curriculum.normalize(data.classroom);
+    const offset = before.length;
+    const entry = offset + 1;
+    const classroom = offset + ordered.length + 1;
+    const targets = mapping.map(index => index + offset);
+    const addTeaching = (item, phase, next, label) => Curriculum.drawTeaching(ppt, ppt.addSlide(), { ...item, phase, next, label }, data.c);
+    before.forEach((item, index) => addTeaching(item, 'before', index + 2, index === offset - 1 ? '进入互动' : '下一页'));
     for (const [index, state] of ordered.entries()) {
       if (index % 40 === 0) onProgress(Math.round(index / ordered.length * 65), '正在生成互动页面');
       const slide = ppt.addSlide();
       slide.background = { color: data.c.canvas };
-      const tools = slideTools(ppt, slide, data.c, mapping);
+      const tools = slideTools(ppt, slide, data.c, targets, entry, classroom);
       const score = state.kind === 'feedback'
         ? state.score + (data.qs[state.question].options[state.value].points ?? 0) : state.score ?? 0;
       drawHeader(data, score, tools);
@@ -266,9 +275,12 @@
       else if (state.kind === 'end') drawSummary(data, state, states[0].start, tools);
       else drawQuestion(data, state, score, tools);
     }
+    after.forEach((item, index) => addTeaching(item, 'after', index === after.length - 1 ? entry : classroom + index + 1,
+      index === after.length - 1 ? '回到活动' : '下一页'));
     onProgress(66, '正在打包 PPT');
     const zip = await Zip.loadAsync(await ppt.write({ outputType: 'arraybuffer' }));
-    await Promise.all(ordered.map(async (state, index) => {
+    const allPages = [...before, ...ordered, ...after];
+    await Promise.all(allPages.map(async (state, index) => {
       const path = 'ppt/slides/slide' + (index + 1) + '.xml';
       const xml = await zip.file(path).async('string');
       const fade = state.kind === 'feedback';
@@ -295,7 +307,7 @@
       { type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 3 } },
       ({ percent }) => onProgress(72 + Math.floor(percent * 0.27), '正在压缩 PPT'),
     );
-    return { bytes, pages: ordered.length, mime: MIME };
+    return { bytes, pages: allPages.length, mime: MIME };
   }
 
   global.LessonPptx = { plan, exportPptx };

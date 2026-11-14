@@ -177,15 +177,23 @@
     return { ...data, qs, branching: data.branching || qs.length !== data.qs.length };
   }
 
-  function pack(data, cover) {
-    return JSON.stringify({ format: FORMAT, version: 1, lesson: { ...data, coverUrl: cover || data.coverUrl } });
+  function pack(data, cover, settings) {
+    const lesson = { ...data, coverUrl: cover || data.coverUrl };
+    const payload = settings ? { format: FORMAT, version: 2, lesson, ...settings } : { format: FORMAT, version: 1, lesson };
+    const json = JSON.stringify(payload);
+    if (json.length > MAX_FILE) throw Error('课件项目文件过大。可先换用尺寸较小的封面。');
+    return json;
+  }
+
+  function readProject(raw) {
+    if (typeof raw !== 'string' || raw.length > MAX_FILE) throw Error('课件项目文件过大。');
+    const payload = JSON.parse(raw);
+    if (payload?.format !== FORMAT || ![1, 2].includes(payload.version)) throw Error('请选择由本工具保存的课件项目。');
+    return { payload, lesson: normalize(payload.lesson) };
   }
 
   function unpack(raw) {
-    if (typeof raw !== 'string' || raw.length > MAX_FILE) throw Error('课件项目文件过大。');
-    const payload = JSON.parse(raw);
-    if (payload?.format !== FORMAT || payload.version !== 1) throw Error('请选择由本工具保存的课件项目。');
-    return normalize(payload.lesson);
+    return readProject(raw).lesson;
   }
 
   function inflateLimited(bytes, max) {
@@ -226,6 +234,6 @@
 
   global.ClassroomProject = {
     MAX_FILE, TYPES, blankQuestion, newLesson, normalize, nextIndex, accuracyResults,
-    preparePpt, pack, unpack, webToken, readToken,
+    preparePpt, pack, unpack, readProject, webToken, readToken,
   };
 })(globalThis);

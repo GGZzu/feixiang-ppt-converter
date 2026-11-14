@@ -25,6 +25,10 @@
   let sourceVersion = 0;
   let coverVersion = 0;
   let replica = null;
+  let replicaRaw = '';
+  let classroom = Curriculum.normalize();
+  let classroomDraft = null;
+  let editableAvailable = false;
   let pendingOriginalCover = Promise.resolve(null);
   let pendingCover = Promise.resolve(null);
   let exportJob = null;
@@ -56,6 +60,9 @@
     previewIndex = 0;
     coverVersion++;
     setReplica(null);
+    replicaRaw = '';
+    classroom = Curriculum.normalize();
+    editableAvailable = false;
     pendingOriginalCover = Promise.resolve(null);
     pendingCover = Promise.resolve(null);
     get('cover-file').value = '';
@@ -64,6 +71,10 @@
     get('preview-empty').hidden = false;
     get('preview-desc').textContent = '导入后可试选一道题，确认反馈。';
     get('export').disabled = true;
+    get('export-mode').hidden = true;
+    get('export-mode').disabled = true;
+    get('edit-classroom').disabled = true;
+    get('edit-classroom').textContent = '添加课堂页';
     get('save-project').disabled = true;
     get('share-activity').disabled = true;
     get('export-note').textContent = '下载后请用课堂电脑上的演示软件从第一页试放。';
@@ -73,6 +84,9 @@
   function setReplica(value) {
     replica = value;
     get('export-replica').hidden = get('replica-note').hidden = !value;
+    get('export').hidden = value?.kind === 'scenario';
+    get('edit-questions').hidden = value?.kind === 'scenario';
+    get('share-activity').hidden = value?.kind === 'scenario';
     get('export').textContent = value ? '下载可编辑版' : '下载互动 PPT';
     get('export').classList.toggle('primary', !value);
     get('export').classList.toggle('secondary', !!value);
@@ -91,13 +105,16 @@
     get('preview-empty').hidden = true;
     preview.hidden = false;
     preview.style.setProperty('--source-canvas', '#' + data.c.canvas);
-    get('preview-desc').textContent = '试选第 ' + (previewIndex + 1) + ' 题，查看对应反馈。';
+    get('preview-desc').textContent = replica?.kind === 'scenario'
+      ? '试点第一轮的选项，查看观察反馈。'
+      : '试选第 ' + (previewIndex + 1) + ' 题，查看对应反馈。';
     get('lesson-name').textContent = data.brand;
-    const facts = [data.levelCount + ' 关', data.qs.length + ' 题'];
-    if (data.scored) facts.push('累计计分');
+    const facts = replica?.kind === 'scenario' ? ['双视角选择', '四卡排序', '16:9'] : [data.levelCount + ' 关', data.qs.length + ' 题'];
+    if (data.scored && !isLight()) facts.push('累计计分');
     if (data.qs.some((question) => question.emotion !== null)) facts.push('情绪强度');
     if (data.advanceMs && get('use-timing').checked) facts.push(data.advanceMs / 1000 + ' 秒翻页');
     get('facts').replaceChildren(...facts.map((fact) => element('span', fact)));
+    renderCompatibility();
     const choices = element('div', '', 'choices');
     const feedback = element('p', '', 'choice-result');
     feedback.setAttribute('role', 'status');
@@ -110,7 +127,7 @@
       button.addEventListener('click', () => {
         for (const item of choices.children) item.setAttribute('aria-pressed', String(item === button));
         const result = option.result || option.tip || (option.correct === null ? '已选 ' + letter : option.correct ? '回答正确' : '再想一想');
-        const points = data.scored && option.points !== null
+        const points = data.scored && !isLight() && option.points !== null
           ? ' · ' + (option.points > 0 ? '+' : '') + option.points + ' 分' : '';
         feedback.textContent = result + points;
         feedback.hidden = false;
@@ -120,6 +137,82 @@
     get('preview-question').replaceChildren(element('h3', q.title), choices, feedback);
     if (q.type !== 'choice') get('preview-question').append(
       element('p', ClassroomProject.TYPES[q.type] + ' · ' + q.items.length + ' 组材料，可打开网页试玩。', 'muted'));
+  }
+
+  function isLight() {
+    return get('export-mode').querySelector('[value="light"]').checked;
+  }
+
+  function renderCompatibility() {
+    const detail = get('compatibility');
+    const mode = get('mode-note');
+    if (replica?.kind === 'scenario') {
+      detail.replaceChildren(
+        element('p', '保留两个角色的选择、三条刻度动画、四张卡片排序、复盘与重试。'),
+        element('p', '选择后由老师决定何时继续。' + replica.source.cosmetics, 'muted'),
+      );
+      mode.textContent = isLight() ? '保留玩法和反馈，省去观察点计数。' : '显示本轮观察点和复盘反馈。';
+      return;
+    }
+    if (replica?.kind === 'emotion') {
+      detail.replaceChildren(
+        element('p', '保留情绪强度点选、答题反馈、提示动画和 16:9 版式。'),
+        element('p', (get('use-timing').checked ? '沿用原课件的自动翻页。' : '答题后由老师点按钮继续。') +
+          '网页悬停效果留在原网页。', 'muted'),
+      );
+    } else {
+      const types = [...new Set(lesson.qs.map(q => ClassroomProject.TYPES[q.type]))].join('、');
+      const supported = lesson.branching ? types + '、反馈和已识别的分支' : types + '和反馈';
+      detail.replaceChildren(
+        element('p', '可导出 ' + supported + '。'),
+        element('p', '使用可编辑的 PPT 版式。未识别的网页特效留在原网页。', 'muted'),
+      );
+    }
+    mode.textContent = isLight()
+      ? '保留点选和反馈，省去累计积分与等级结算。'
+      : '保留课件已识别的累计积分和结算规则。';
+  }
+
+  function updateClassroomLabel() {
+    const count = classroom.before.length + classroom.after.length;
+    get('edit-classroom').textContent = count ? '编辑课堂页（' + count + '）' : '添加课堂页';
+  }
+
+  function renderClassroomEditor() {
+    const root = get('classroom-fields');
+    root.replaceChildren();
+    for (const [phase, label] of [['before', '互动开始前'], ['after', '互动结束后']]) {
+      const group = element('section', '', 'classroom-section');
+      group.append(element('h3', label));
+      const pages = classroomDraft[phase];
+      for (const [index, page] of pages.entries()) {
+        const block = document.createElement('fieldset');
+        block.append(element('legend', '第 ' + (index + 1) + ' 页'));
+        for (const [key, label, max] of [['title', '页面标题', 48], ['body', '正文', 270]]) {
+          const row = element('label', label, 'editor-field');
+          const input = document.createElement(key === 'body' ? 'textarea' : 'input');
+          input.value = page[key];
+          input.maxLength = max;
+          input.addEventListener('input', () => { page[key] = input.value; });
+          row.append(input);
+          block.append(row);
+        }
+        addEditorButton(block, '移除此页', () => {
+          pages.splice(index, 1);
+          renderClassroomEditor();
+        });
+        group.append(block);
+      }
+      if (pages.length < Curriculum.MAX_PAGES_PER_SECTION) {
+        addEditorButton(group, phase === 'before' ? '添加导入页' : '添加讨论或总结页', () => {
+          pages.push({ title: '', body: '' });
+          renderClassroomEditor();
+          root.querySelectorAll('.classroom-section')[phase === 'before' ? 0 : 1]
+            .querySelector('fieldset:last-of-type input')?.focus();
+        });
+      }
+      root.append(group);
+    }
   }
 
   function redrawEditor(index) {
@@ -286,12 +379,17 @@
     }
     previewIndex = Number(get('editor-select').value);
     get('question-editor').close();
-    const usedOriginal = Boolean(replica);
-    setReplica(null);
+    const keptReplica = Boolean(replica) && lesson.scored && lesson.countsCorrect && !lesson.branching &&
+      lesson.qs.every(q => q.type === 'choice' && q.emotion !== null && q.options.every(o => o.points >= 0));
+    if (!keptReplica) {
+      setReplica(null);
+      replicaRaw = '';
+    }
+    get('export-mode').hidden = get('export-mode').disabled = !lesson.scored;
+    if (!lesson.scored) get('export-mode').querySelector('[value="full"]').checked = true;
     renderPreview(lesson);
     checkPlan();
-    if (!get('export').disabled) showStatus('已应用修改，导出的所有答题路线会一起更新。' +
-      (usedOriginal ? '如需按原课件样式导出，请重新导入原 HTML。' : ''));
+    if (!get('export').disabled) showStatus('已应用修改，导出的答题路线会一起更新。');
   }
 
   function imageURL(value) {
@@ -404,16 +502,21 @@
   }
 
   function activeLesson() {
-    return { ...lesson, advanceMs: get('use-timing').checked ? lesson.advanceMs : 0 };
+    const data = { ...lesson, advanceMs: get('use-timing').checked ? lesson.advanceMs : 0 };
+    return isLight() ? Curriculum.lightLesson(data) : data;
   }
 
   function checkPlan() {
     try {
       LessonPptx.plan(ClassroomProject.preparePpt(activeLesson()));
       get('export').disabled = false;
+      editableAvailable = true;
+      get('export-replica').disabled = !replica;
       showStatus('已识别 ' + lesson.levelCount + ' 关、' + lesson.qs.length + ' 题。');
     } catch (error) {
+      editableAvailable = false;
       get('export').disabled = true;
+      get('export-replica').disabled = true;
       get('settings').open = true;
       showStatus(error.message, 'error');
     }
@@ -421,27 +524,46 @@
 
   function loadSource(raw) {
     try {
+      if (raw.length <= LessonModel.MAX_SOURCE && raw.includes('orderItems') && raw.includes('feedbackMarkup')) {
+        const source = ScenarioActivity.read(raw);
+        if (source) {
+          loadLesson(ClassroomProject.normalize(ScenarioActivity.fallbackLesson(source)), { kind: 'scenario', source }, raw);
+          return;
+        }
+      }
       const data = ClassroomProject.normalize(LessonModel.readSource(raw));
-      loadLesson(data, LessonReplica.read(raw, data));
+      const source = LessonReplica.read(raw, data);
+      loadLesson(data, source ? { kind: 'emotion', source } : null, source ? raw : '');
     } catch (error) {
       clearLesson();
       showStatus(error.message, 'error');
     }
   }
 
-  function loadLesson(data, original = null) {
+  function loadLesson(data, original = null, raw = '', settings = {}) {
     lesson = data;
+    classroom = Curriculum.normalize(settings.pages);
+    replicaRaw = raw;
     setReplica(original);
     get('settings').hidden = false;
     get('settings').open = false;
     get('timing-box').hidden = !lesson.advanceMs;
-    get('use-timing').checked = true;
-    get('timing-help').textContent = lesson.advanceMs ? '反馈显示 ' + lesson.advanceMs / 1000 + ' 秒后继续。' : '';
+    get('use-timing').checked = settings.auto !== false;
+    get('timing-help').textContent = lesson.advanceMs ? '自动时，反馈显示 ' + lesson.advanceMs / 1000 + ' 秒后继续。取消勾选可留出讨论时间。' : '';
+    get('export-mode').querySelector('[value="' + (settings.mode === 'light' ? 'light' : 'full') + '"]').checked = true;
+    get('export-mode').hidden = get('export-mode').disabled = !lesson.scored && original?.kind !== 'scenario';
+    get('edit-classroom').disabled = false;
+    updateClassroomLabel();
     get('save-project').disabled = false;
     get('share-activity').disabled = false;
     prepareCover(lesson.coverUrl);
     renderPreview(lesson);
-    checkPlan();
+    if (original?.kind === 'scenario') {
+      get('export-replica').disabled = false;
+      showStatus('已识别双视角活动，包含两轮情境与一次排序。');
+    } else {
+      checkPlan();
+    }
   }
 
   async function loadProject(file) {
@@ -449,12 +571,21 @@
     const version = ++sourceVersion;
     try {
       if (file.size > ClassroomProject.MAX_FILE) throw Error('课件项目文件过大。');
-      const project = ClassroomProject.unpack(await file.text());
+      const { lesson: project, payload } = ClassroomProject.readProject(await file.text());
       if (version !== sourceVersion) return;
+      const settings = Curriculum.readProject(payload) ?? {};
+      const source = settings.source;
+      let original = null;
+      if (source) {
+        const scenario = source.includes('orderItems') && source.includes('feedbackMarkup') && ScenarioActivity.read(source);
+        const emotion = !scenario && LessonReplica.read(source, ClassroomProject.normalize(LessonModel.readSource(source)));
+        if (scenario) original = { kind: 'scenario', source: scenario };
+        else if (emotion) original = { kind: 'emotion', source: emotion };
+      }
       clearLesson();
       get('source').value = '';
-      loadLesson(project);
-      if (!get('export').disabled) showStatus('已打开课件项目，可继续编辑或导出。');
+      loadLesson(project, original, original ? source : '', settings);
+      if (original || !get('export').disabled) showStatus('已打开课件项目，可继续编辑或导出。');
     } catch (error) {
       if (version === sourceVersion) showStatus(error.message, 'error');
     }
@@ -462,10 +593,45 @@
 
   async function saveProject() {
     if (!lesson) return;
-    const data = activeLesson();
-    const cover = await pendingCover;
-    download(ClassroomProject.pack(data, cover), 'application/json', data.title, ' - 课件项目.json');
-    showStatus('课件项目已下载。下次点「打开课件项目」继续备课。');
+    const data = lesson;
+    const settings = { pages: classroom, mode: isLight() ? 'light' : 'full', auto: get('use-timing').checked };
+    const raw = replicaRaw;
+    try {
+      const cover = await pendingCover;
+      if (data !== lesson) return;
+      let savedCover = cover;
+      if (replica?.kind === 'emotion' && raw && raw.length <= 1500000) {
+        const sourceCover = await pendingOriginalCover;
+        if (data !== lesson) return;
+        if (typeof sourceCover === 'string') savedCover = sourceCover;
+        else if (sourceCover) {
+          savedCover = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(sourceCover);
+          });
+        }
+      }
+      if (data !== lesson) return;
+      const preservesSource = raw && raw.length <= 1500000;
+      let localSource = '';
+      if (preservesSource) {
+        const template = document.createElement('template');
+        template.innerHTML = raw;
+        template.content.querySelectorAll('script[src], #fx-resource-config, [data-fx-resource-runtime], iframe')
+          .forEach(item => item.remove());
+        localSource = template.innerHTML;
+      }
+      const plainProject = !raw && !settings.pages.before.length && !settings.pages.after.length && settings.mode === 'full' && settings.auto;
+      download(ClassroomProject.pack(data, savedCover, plainProject ? null : { ...settings, source: localSource }),
+        'application/json', data.title, ' - 课件项目.json');
+      showStatus(raw && !preservesSource
+        ? '课件项目已下载。源 HTML 较大，如需再次导出宽屏版，请保留原 HTML。'
+        : '课件项目已下载。下次点「打开课件项目」继续备课。');
+    } catch (error) {
+      showStatus(error.message || '课件项目未能保存。', 'error');
+    }
   }
 
   function drawQr(link) {
@@ -574,8 +740,10 @@
     for (const id of ['demo', 'source', 'analyze', 'paste-tab', 'file-tab', 'browse', 'cover-file', 'use-timing', 'edit-questions', 'new-project', 'open-project']) {
       get(id).disabled = active;
     }
-    get('export').disabled = active || !lesson;
-    get('export-replica').disabled = active || !replica;
+    get('export').disabled = active || !editableAvailable;
+    get('export-replica').disabled = active || !replica || (replica.kind === 'emotion' && !editableAvailable);
+    get('export-mode').disabled = active || get('export-mode').hidden;
+    get('edit-classroom').disabled = active || !lesson;
     get('save-project').disabled = active || !lesson;
     get('share-activity').disabled = active || !lesson;
     get('cancel').hidden = !active;
@@ -617,10 +785,10 @@
     setProgress(0, '准备生成');
     get('export-note').textContent = '正在浏览器内处理课件。';
     try {
-      const data = ClassroomProject.preparePpt(activeLesson());
+      const data = { ...ClassroomProject.preparePpt(activeLesson()), classroom };
       const cover = await pendingCover;
       if (exportJob !== job) return;
-      job.worker = new Worker('./export-worker.js?v=6');
+      job.worker = new Worker('./export-worker.js?v=8');
       job.worker.addEventListener('message', ({ data: result }) => {
         if (exportJob !== job) return;
         if (result.type === 'progress') setProgress(result.value, result.label);
@@ -640,25 +808,29 @@
 
   async function exportReplica() {
     if (!lesson || !replica || exportJob) return;
-    const data = lesson;
-    const source = replica;
+    const data = activeLesson();
+    const { source, kind } = replica;
+    const config = { ...classroom, light: isLight() };
     const job = { worker: null, abort: new AbortController() };
     exportJob = job;
     setBusy(true);
     setProgress(0, '准备 16:9 宽屏画面');
     get('export-note').textContent = '正在浏览器内处理原课件，页面较多时请稍等。';
     try {
-      const cover = await pendingOriginalCover;
+      const cover = kind === 'emotion' ? await pendingOriginalCover : null;
       if (exportJob !== job) return;
-      const plan = await LessonReplica.render(source, data, cover, setProgress, job.abort.signal);
+      const plan = kind === 'scenario'
+        ? await ScenarioActivity.render(source, config, setProgress, job.abort.signal)
+        : await LessonReplica.render(source, data, cover, setProgress, job.abort.signal, config);
       if (exportJob !== job) return;
-      job.worker = new Worker('./replica-worker.js?v=7');
+      job.worker = new Worker('./replica-worker.js?v=8');
       job.worker.addEventListener('message', ({ data: result }) => {
         if (exportJob !== job) return;
         if (result.type === 'progress') setProgress(result.value, result.label);
         if (result.type === 'error') finish(job, '导出失败。' + result.message);
         if (result.type === 'done') {
-          download(result.bytes, result.mime, data.title, ' - 16比9宽屏互动版.pptx');
+          download(result.bytes, result.mime, data.title,
+            config.light ? ' - 16比9轻量讨论版.pptx' : ' - 16比9宽屏互动版.pptx');
           finish(job, '宽屏版已生成。用桌面 WPS 或 PowerPoint 从第一页放映，即可点选答题。');
         }
       });
@@ -780,6 +952,24 @@
   get('editor-cancel').addEventListener('click', () => get('question-editor').close());
   get('question-editor').addEventListener('close', () => { questionDraft = null; });
   get('question-form').addEventListener('submit', applyEditor);
+  get('edit-classroom').addEventListener('click', () => {
+    if (!lesson || exportJob) return;
+    classroomDraft = structuredClone(classroom);
+    renderClassroomEditor();
+    get('classroom-editor').showModal();
+  });
+  get('classroom-cancel').addEventListener('click', () => get('classroom-editor').close());
+  get('classroom-form').addEventListener('submit', event => {
+    event.preventDefault();
+    classroom = Curriculum.normalize(classroomDraft);
+    updateClassroomLabel();
+    get('classroom-editor').close();
+  });
+  get('export-mode').addEventListener('change', () => {
+    if (!lesson) return;
+    renderPreview(lesson);
+    if (replica?.kind !== 'scenario') checkPlan();
+  });
   get('use-timing').addEventListener('change', () => {
     if (!lesson) return;
     renderPreview(lesson);

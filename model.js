@@ -48,6 +48,18 @@
     return null;
   }
 
+  function literalVariables(code) {
+    const result = Object.create(null);
+    for (const statement of parseScript(code)?.body ?? []) {
+      if (statement.type !== 'VariableDeclaration') continue;
+      for (const declaration of statement.declarations) {
+        if (declaration.id.type !== 'Identifier') continue;
+        try { result[declaration.id.name] = readLiteral(declaration.init); } catch { /* Computed values are not imported. */ }
+      }
+    }
+    return result;
+  }
+
   function collectCandidates(code, type, candidates) {
     if (type === 'application/json' || type === 'application/ld+json') {
       try { candidates.push(JSON.parse(code)); } catch { /* Skip invalid JSON. */ }
@@ -231,6 +243,6 @@
     throw issue ?? Error(HEADLINE + '目前支持源码中写明题目和选项的闯关或选择题。请检查是否复制了完整源码。');
   }
 
-  global.LessonModel = { readSource, MAX_SOURCE };
+  global.LessonModel = { readSource, literalVariables, MAX_SOURCE };
 })(globalThis);
 
