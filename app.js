@@ -24,6 +24,8 @@
   let lesson = null;
   let sourceVersion = 0;
   let coverVersion = 0;
+  let replica = null;
+  let pendingOriginalCover = Promise.resolve(null);
   let pendingCover = Promise.resolve(null);
   let exportJob = null;
   let questionDraft = null;
@@ -53,6 +55,8 @@
     lesson = null;
     previewIndex = 0;
     coverVersion++;
+    setReplica(null);
+    pendingOriginalCover = Promise.resolve(null);
     pendingCover = Promise.resolve(null);
     get('cover-file').value = '';
     get('settings').hidden = true;
@@ -64,6 +68,14 @@
     get('share-activity').disabled = true;
     get('export-note').textContent = '下载后请用课堂电脑上的演示软件从第一页试放。';
     showStatus();
+  }
+
+  function setReplica(value) {
+    replica = value;
+    get('export-replica').hidden = get('replica-note').hidden = !value;
+    get('export').textContent = value ? '下载可编辑版' : '下载互动 PPT';
+    get('export').classList.toggle('primary', !value);
+    get('export').classList.toggle('secondary', !!value);
   }
 
   function element(tag, value, className) {
@@ -274,9 +286,12 @@
     }
     previewIndex = Number(get('editor-select').value);
     get('question-editor').close();
+    const usedOriginal = Boolean(replica);
+    setReplica(null);
     renderPreview(lesson);
     checkPlan();
-    if (!get('export').disabled) showStatus('已应用修改，导出的所有答题路线会一起更新。');
+    if (!get('export').disabled) showStatus('已应用修改，导出的所有答题路线会一起更新。' +
+      (usedOriginal ? '如需原样放映，请重新导入原 HTML。' : ''));
   }
 
   function imageURL(value) {
@@ -351,12 +366,17 @@
     const remote = allowedRemote(value);
     const embedded = imageURL(value);
     if (!remote && !embedded) {
+      pendingOriginalCover = Promise.resolve(null);
       pendingCover = Promise.resolve(null);
       notice.textContent = value ? '这个封面地址无法直接读取，可另选本地图片。' : '没有封面插图，可按需选择一张。';
       return;
     }
     notice.textContent = '正在读取原课件的封面。';
-    pendingCover = (remote ? loadImageBlob(remote).then(coverData) : coverData(embedded))
+    pendingOriginalCover = (remote ? loadImageBlob(remote) : Promise.resolve(embedded)).catch(() => null);
+    pendingCover = pendingOriginalCover.then((image) => {
+      if (!image) throw Error('封面图片不可用。');
+      return coverData(image);
+    })
       .then((data) => {
         if (version === coverVersion) notice.textContent = '已读取原封面，导出时会嵌入 PPT。';
         return data;
@@ -373,6 +393,7 @@
       return;
     }
     const version = ++coverVersion;
+    pendingOriginalCover = Promise.resolve(file);
     pendingCover = coverData(file).then((data) => {
       if (version === coverVersion) get('cover-state').textContent = '已选用本地封面。';
       return data;
@@ -400,15 +421,17 @@
 
   function loadSource(raw) {
     try {
-      loadLesson(ClassroomProject.normalize(LessonModel.readSource(raw)));
+      const data = ClassroomProject.normalize(LessonModel.readSource(raw));
+      loadLesson(data, LessonReplica.read(raw, data));
     } catch (error) {
       clearLesson();
       showStatus(error.message, 'error');
     }
   }
 
-  function loadLesson(data) {
+  function loadLesson(data, original = null) {
     lesson = data;
+    setReplica(original);
     get('settings').hidden = false;
     get('settings').open = false;
     get('timing-box').hidden = !lesson.advanceMs;
@@ -552,6 +575,7 @@
       get(id).disabled = active;
     }
     get('export').disabled = active || !lesson;
+    get('export-replica').disabled = active || !replica;
     get('save-project').disabled = active || !lesson;
     get('share-activity').disabled = active || !lesson;
     get('cancel').hidden = !active;
@@ -566,6 +590,7 @@
 
   function finish(job, notice) {
     if (exportJob !== job) return;
+    job.abort?.abort();
     job.worker?.terminate();
     exportJob = null;
     setBusy(false);
@@ -608,6 +633,38 @@
       job.worker.addEventListener('error', () =>
         finish(job, '导出程序未能载入。请刷新页面，或用新版 Edge / Chrome 重试。'));
       job.worker.postMessage({ lesson: data, cover });
+    } catch (error) {
+      finish(job, '导出失败。' + error.message);
+    }
+  }
+
+  async function exportReplica() {
+    if (!lesson || !replica || exportJob) return;
+    const data = lesson;
+    const source = replica;
+    const job = { worker: null, abort: new AbortController() };
+    exportJob = job;
+    setBusy(true);
+    setProgress(0, '准备原网页画面');
+    get('export-note').textContent = '正在浏览器内处理原课件，页面较多时请稍等。';
+    try {
+      const cover = await pendingOriginalCover;
+      if (exportJob !== job) return;
+      const plan = await LessonReplica.render(source, data, cover, setProgress, job.abort.signal);
+      if (exportJob !== job) return;
+      job.worker = new Worker('./replica-worker.js?v=5');
+      job.worker.addEventListener('message', ({ data: result }) => {
+        if (exportJob !== job) return;
+        if (result.type === 'progress') setProgress(result.value, result.label);
+        if (result.type === 'error') finish(job, '导出失败。' + result.message);
+        if (result.type === 'done') {
+          download(result.bytes, result.mime, data.title, ' - 原样互动版.pptx');
+          finish(job, '原样版已生成。用桌面 WPS 或 PowerPoint 从第一页放映，即可点选答题。');
+        }
+      });
+      job.worker.addEventListener('error', () =>
+        finish(job, '导出程序未能载入。请刷新页面，或用新版 Edge / Chrome 重试。'));
+      job.worker.postMessage(plan, plan.media);
     } catch (error) {
       finish(job, '导出失败。' + error.message);
     }
@@ -729,6 +786,7 @@
     checkPlan();
   });
   get('export').addEventListener('click', exportLesson);
+  get('export-replica').addEventListener('click', exportReplica);
   get('cancel').addEventListener('click', () => {
     if (exportJob) finish(exportJob, '已取消。可以重新导出。');
   });
