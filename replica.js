@@ -3,6 +3,7 @@
 
   const WIDTH = 1920;
   const HEIGHT = 1080;
+  const PROJECTION_ZOOM = 1.28;
   const MAX_FRAMES = 4200;
   const TAGS = new Set('div header main section aside span b strong small h1 h2 h3 p ul li br img button i'.split(' '));
   const REQUIRED = 'intro game summary startBtn topScore levelName progressText sceneTitle sceneCopy emotionLabel meterFill ratingValue ratingOptions options feedback hintText progressDots scoreSide finalScore rationalCount rankText restartBtn backIntroBtn'.split(' ');
@@ -11,6 +12,50 @@
   const TOASTS = ['先观察后调整，下一题继续练习。', '选择有效，积分增加'];
   const FEEDBACK = ['这个做法可能让事情升级', '这是一种更有效的应对'];
   const UNSAFE_CSS = /[\\<>\x00-\x08\x0b\x0e-\x1f]|@(?!(?:media)\b)|(?:url|image-set|src|paint|element|image)\s*\(/i;
+  // Use the same canvas and layout on every device.
+  const PROJECTION_CSS = [
+    '.app { min-height:0; padding:18px 36px 0; }',
+    '.topbar, .screen { max-width:none; }',
+    '.topbar { margin-bottom:16px; }',
+    '.hero .panel { min-height:776px; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; }',
+    '.hero p { margin:14px 0 0; }',
+    '.hero .rules { margin:26px 0; }',
+    '.hero img { min-width:0; }',
+    '.game-layout { gap:18px; }',
+    '.scene-card { padding:22px 24px; }',
+    '.scene-title { margin:12px 0 6px; }',
+    '.scene-copy { font-size:20px; margin:9px 0 8px; }',
+    '.self-rating { margin-top:12px; padding:12px 14px; }',
+    '.rating-options { margin-top:8px; gap:7px; }',
+    '.rating-options button { padding:7px 6px; }',
+    '.rating-tip { margin-top:7px; }',
+    '#options { display:grid; gap:7px; margin-top:10px; }',
+    '.option { width:100%; align-items:center; min-height:60px; padding:10px 14px; font-size:18px; }',
+    '.feedback { margin-top:12px; padding:12px 16px; }',
+    '.feedback h3, .feedback p { margin:0 0 6px; }',
+    '.next-row { margin-top:11px; }',
+    '.scene-card:not(.show-feedback) .scene-title { margin:16px 0 9px; }',
+    '.scene-card:not(.show-feedback) .self-rating { margin-top:17px; padding:15px 14px; }',
+    '.scene-card:not(.show-feedback) .rating-options button { min-height:53px; }',
+    '.scene-card:not(.show-feedback) .option { min-height:74px; font-size:19px; }',
+    '.scene-card:not(.show-feedback) .next-row { margin-top:15px; }',
+    '.side { gap:16px; }',
+    '.side-card { padding:18px 20px; }',
+    '.side-card h3 { margin:0 0 12px; font-size:21px; }',
+    '.method { padding:16px 0; }',
+    '.summary { max-width:1370px; }',
+    '.summary .panel { min-height:760px; padding:34px 42px; display:flex; flex-direction:column; justify-content:center; }',
+    '.summary h1 { margin:14px 0 10px; }',
+    '.summary .panel > p { font-size:18px; margin:0 0 12px; }',
+    '.summary .score-big { font-size:92px; }',
+    '.summary .result-grid { margin:20px 0; }',
+    '.summary .result-box { padding:14px 18px; }',
+    '.summary .tips { padding:14px 20px; }',
+    '.summary .tips h3 { margin:0 0 8px; }',
+    '.summary .tips ul { margin:0; }',
+    '.summary .tips li { margin:6px 0; }',
+    '.toast { right:36px; bottom:27px; font-size:20px; }',
+  ].join('\n');
 
   function read(source, data) {
     if (!data.originalEmotionLayout || !data.scored || !data.countsCorrect || !data.advanceMs || !data.rank.length ||
@@ -28,7 +73,7 @@
     const hideMs = Number(script?.match(/classList\.remove\(['"]show['"]\)\s*,\s*(\d{3,5})\s*\)/)?.[1]);
     const feedbackHint = script?.match(/\$\(['"]hintText['"]\)\.textContent\s*=\s*['"](评价将在[^'"\r\n]{1,60})['"]/)?.[1];
     if (!app || !toast || !cover || !nodes || nodes.length > 350 || !css || css.length > 16000 ||
-        UNSAFE_CSS.test(css) || !feedbackHint || !hideMs || hideMs >= data.advanceMs ||
+        UNSAFE_CSS.test(css) || !feedbackHint || hideMs < 250 || !hideMs || hideMs >= data.advanceMs ||
         ![INITIAL_HINT, RATED_HINT, ...TOASTS, ...FEEDBACK].every(value => script.includes(value)) ||
         !REQUIRED.every(id => app.querySelectorAll('#' + id).length === 1) ||
         !app.querySelector('.mini-status') ||
@@ -93,7 +138,7 @@
           const style = doc.createElement('style');
           const windowCss = 'html {width:' + WIDTH + 'px; height:' + HEIGHT + 'px; scrollbar-width:none}' +
             'body{width:' + WIDTH + 'px;height:' + HEIGHT + 'px;position:relative}.toast{position:absolute}';
-          style.textContent = source.css + '\n' + windowCss;
+          style.textContent = source.css + '\n' + windowCss + '\n' + PROJECTION_CSS;
           doc.body.append(style, doc.importNode(source.app, true), doc.importNode(source.toast, true));
           const image = doc.querySelector('#intro img');
           image.src = cover;
@@ -134,6 +179,7 @@
     }
     const q = data.qs[state.question];
     const answered = state.question + Number(feedback);
+    doc.querySelector('.scene-card').classList.toggle('show-feedback', feedback);
     put('levelName', q.level);
     put('progressText', '第 ' + q.progress + ' 题 · 总进度 ' + (answered + 1) + ' / ' + data.qs.length);
     put('sceneTitle', q.title);
@@ -197,13 +243,37 @@
     return { order, mapping, intros, start: mapping[states[0].start] };
   }
 
+  function fitStage(doc, data, source) {
+    const app = doc.querySelector('.app');
+    const testStates = [{ kind: 'intro' }, { kind: 'end', score: 9999, correct: data.qs.length }];
+    for (const [question, q] of data.qs.entries()) {
+      testStates.push({ kind: 'question', question });
+      q.options.forEach((_, value) => testStates.push({ kind: 'feedback', question, value }));
+    }
+    const withinPage = state => {
+      paint(doc, data, source, state);
+      const visible = doc.querySelector('#intro:not(.hidden), #game:not(.hidden), #summary:not(.hidden)');
+      const bounds = sizeOf(visible);
+      return bounds.y + bounds.h <= HEIGHT - 28;
+    };
+    for (let percent = Math.round(PROJECTION_ZOOM * 100); percent >= 94; percent -= 2) {
+      const zoom = percent / 100;
+      app.style.zoom = zoom;
+      app.style.width = (WIDTH / zoom) + 'px';
+      if (testStates.every(withinPage)) return;
+    }
+    throw Error('有一页的文字超出了宽屏画面，无法完整导出。请缩短该页的长文字后重试。');
+  }
+
   async function render(source, data, cover, onProgress = () => {}, signal) {
     const { order, mapping, intros, start } = makeOrder(data);
     if (!cover) throw Error('没读到原封面。请在「封面和翻页」中选入同一张插图后重试。');
     const check = () => signal?.throwIfAborted();
     check();
-    const { frame, doc } = await createStage(source, await inlineImage(cover));
+    const coverUrl = await inlineImage(cover);
+    const { frame, doc } = await createStage(source, coverUrl);
     try {
+      fitStage(doc, data, source);
       const whole = { x: 0, y: 0, w: WIDTH, h: HEIGHT };
       const encoder = new XMLSerializer();
       const canvas = document.createElement('canvas');
@@ -250,7 +320,7 @@
         if (y + h > HEIGHT - 1) throw Error('有一页的文字超出了宽屏画面，暂时无法完整导出原样版。');
         hide(mini, true);
         hide(side, true);
-        if (state.kind === 'intro') coverImg.src = await inlineImage(cover);
+        if (state.kind === 'intro') coverImg.src = coverUrl;
         else coverImg.removeAttribute('src');
         return capture(key, await raster(), whole);
       }
@@ -316,7 +386,7 @@
           : '第 ' + (state.question + 1) + ' 题 · ' + q.title + (feedback ? ' · 答题反馈' : '');
         unique.set(state, { name, layers, hits, feedback });
         if (index % 8 === 0 || index + 1 === order.length) {
-          onProgress(Math.round((index + 1) / order.length * 64), '正在生成原网页画面');
+          onProgress(Math.round((index + 1) / order.length * 64), '正在生成 16:9 宽屏画面');
           await new Promise(resolve => setTimeout(resolve, 0));
         }
       }

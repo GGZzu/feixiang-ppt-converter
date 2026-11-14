@@ -30,13 +30,15 @@ function timing(spid, hideMs, height) {
       behavior(time(id, 250, ' fill="hold"'),
         tags('p:attrNameLst', tags('p:attrName', 'ppt_x') + tags('p:attrName', 'ppt_y'))) + '</p:animMotion>';
   };
-  const group = (id, effectId, delay, entrance, children) => tags('p:par',
-    '<p:cTn id="' + id + '" fill="hold">' + cond(delay) + tags('p:childTnLst', tags('p:par',
+  // Use an "after previous" exit so WPS respects the toast's visible time.
+  const group = (id, effectId, entrance, children) => tags('p:par',
+    '<p:cTn id="' + id + '" fill="hold">' + cond(entrance ? 0 : 500) + tags('p:childTnLst', tags('p:par',
       '<p:cTn id="' + effectId + '" presetID="10" presetClass="' + (entrance ? 'entr' : 'exit') +
-      '" presetSubtype="0" fill="hold" grpId="' + Number(!entrance) + '" nodeType="withEffect">' +
-      cond(0) + tags('p:childTnLst', children) + '</p:cTn>')) + '</p:cTn>');
-  const effects = group(4, 5, 0, true, visibility(6, 0, 'visible') + fade(7, 'in') + movement(8, false)) +
-    group(9, 10, hideMs, false, fade(11, 'out') + movement(12, true) + visibility(13, 250, 'hidden'));
+      '" presetSubtype="0" fill="hold" grpId="' + Number(!entrance) + '" nodeType="' +
+      (entrance ? 'withEffect' : 'afterEffect') + '">' +
+      cond(entrance ? 0 : hideMs - 250) + tags('p:childTnLst', children) + '</p:cTn>')) + '</p:cTn>');
+  const effects = group(4, 5, true, visibility(6, 0, 'visible') + fade(7, 'in') + movement(8, false)) +
+    group(9, 10, false, fade(11, 'out') + movement(12, true) + visibility(13, 250, 'hidden'));
   const clickGroup = tags('p:par', '<p:cTn id="3" fill="hold"><p:stCondLst><p:cond delay="indefinite"/>' +
     '<p:cond evt="onBegin" delay="0"><p:tn val="2"/></p:cond></p:stCondLst>' + tags('p:childTnLst', effects) + '</p:cTn>');
   const condition = (tag, event) => tags(tag, '<p:cond evt="' + event + '" delay="0"><p:tgtEl><p:sldTgt/></p:tgtEl></p:cond>');
@@ -53,7 +55,7 @@ async function exportReplica(data, report) {
   const ppt = new PptxGenJS();
   ppt.layout = 'LAYOUT_WIDE';
   ppt.title = title;
-  ppt.subject = '原样放映 · 课堂互动课件';
+  ppt.subject = '16:9 宽屏互动课件';
   ppt.author = '课件转换';
   ppt.company = '课件转换';
   ppt.addSlide();
@@ -80,7 +82,7 @@ async function exportReplica(data, report) {
   const clickable = (id, relation, bounds) => '<p:sp><p:nvSpPr><p:cNvPr id="' + id + '" name="' +
     escapeXml(bounds.name) + '"><a:hlinkClick r:id="' + relation + '" action="ppaction://hlinksldjump"/>' +
     '</p:cNvPr><p:cNvSpPr/><p:nvPr/></p:nvSpPr>' + tags('p:spPr', xfrm(bounds) + rect +
-      '<a:solidFill><a:srgbClr val="FFFFFF"><a:alpha val="300"/></a:srgbClr></a:solidFill><a:ln><a:noFill/></a:ln>') + '</p:sp>';
+      '<a:solidFill><a:srgbClr val="FFFFFF"><a:alpha val="0"/></a:srgbClr></a:solidFill><a:ln><a:noFill/></a:ln>') + '</p:sp>';
   const ids = [];
   const pRels = [];
   const overrides = [];

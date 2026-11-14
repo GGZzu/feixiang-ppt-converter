@@ -280,7 +280,8 @@
     }));
     const props = 'ppt/presProps.xml';
     const propsXml = await zip.file(props).async('string');
-    const show = '<p:showPr useTimings="' + (data.advanceMs ? '1' : '0') + '"><p:kiosk/><p:sldAll/></p:showPr>';
+    // WPS adds a default auto-advance time to untimed slides in kiosk mode.
+    const show = '<p:showPr useTimings="' + (data.advanceMs ? '1' : '0') + '"><p:present/><p:sldAll/></p:showPr>';
     zip.file(props, propsXml.includes('</p:presentationPr>')
       ? propsXml.replace('</p:presentationPr>', show + '</p:presentationPr>')
       : propsXml.replace(/(<p:presentationPr[^>]*?)\s*\/>/, '$1>' + show + '</p:presentationPr>'));

@@ -8,16 +8,16 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; frame-src 'self'; worker-src 'self'; connect-src 'self' https://*.fbcontent.cn; base-uri 'none'; form-action 'none'; object-src 'none'">
   <meta name="theme-color" content="#f6f8f6">
   <title>飞象课件转互动 PPT</title>
-  <link rel="stylesheet" href="./style.css?v=5">
+  <link rel="stylesheet" href="./style.css?v=4">
   <script defer src="./acorn.js"></script>
   <script defer src="./model.js"></script>
-  <script defer src="./pptx.js?v=4"></script>
+  <script defer src="./pptx.js?v=6"></script>
   <script defer src="./project.js?v=4"></script>
   <script defer src="./qrcode.js"></script>
   <script defer src="./fflate.js"></script>
   <script defer src="./play.js?v=4"></script>
-  <script defer src="./replica.js?v=5"></script>
-  <script defer src="./app.js?v=5"></script>
+  <script defer src="./replica.js?v=7"></script>
+  <script defer src="./app.js?v=7"></script>
 </head>
 <body>
   <header class="top">
@@ -123,11 +123,11 @@
             <button type="button" class="button secondary small" id="share-activity" disabled>试玩与分享网页</button>
           </div>
           <div class="download-actions">
-            <button class="button primary" type="button" id="export-replica" hidden>下载原样互动 PPT</button>
+            <button class="button primary" type="button" id="export-replica" hidden>下载宽屏互动 PPT</button>
             <button class="button primary" type="button" id="export" disabled>下载互动 PPT</button>
             <button class="button secondary" type="button" id="cancel" hidden>取消</button>
           </div>
-          <p class="muted download-note" id="replica-note" hidden>原样版保留网页排版和答题动画，在 PPT 放映里直接点选。要改题目和排版，可以下载可编辑版。</p>
+          <p class="muted download-note" id="replica-note" hidden>固定按 16:9 投影比例导出，保留原课件的颜色、插图和答题动画。放映时可直接点选。</p>
           <p class="muted download-note" id="export-note" aria-live="polite">下载后请用课堂电脑上的演示软件从第一页试放。</p>
         </div>
       </section>
@@ -149,7 +149,7 @@
       <details>
         <summary>能保留哪些互动？</summary>
         <p>目前支持源码中写明题目、选项和反馈或评分规则的闯关、情境选择和选择题。可导出点选、分支反馈、累计计分、结算，以及识别到的定时翻页。含情绪强度的兼容课件可在 PPT 内点选 1 到 10 分。</p>
-        <p>兼容的飞象情绪闯关课件可下载原样互动版。它按电脑宽屏保留网页画面，支持点选高亮、提示动画和自动进下一题。网页上的鼠标悬停效果及其他自定义动画可能需要原网页。</p>
+        <p>兼容的飞象情绪闯关课件可下载宽屏互动版。每次固定导出为 16:9，支持点选高亮、提示动画和自动进下一题。网页上的鼠标悬停效果及其他自定义动画可能需要原网页。</p>
         <p>新建的配对和排序活动在网页上可以拖放或点选，在离线 PPT 里用逐步点选完成。</p>
       </details>
       <details>

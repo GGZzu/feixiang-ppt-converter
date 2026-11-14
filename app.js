@@ -291,7 +291,7 @@
     renderPreview(lesson);
     checkPlan();
     if (!get('export').disabled) showStatus('已应用修改，导出的所有答题路线会一起更新。' +
-      (usedOriginal ? '如需原样放映，请重新导入原 HTML。' : ''));
+      (usedOriginal ? '如需按原课件样式导出，请重新导入原 HTML。' : ''));
   }
 
   function imageURL(value) {
@@ -620,7 +620,7 @@
       const data = ClassroomProject.preparePpt(activeLesson());
       const cover = await pendingCover;
       if (exportJob !== job) return;
-      job.worker = new Worker('./export-worker.js?v=4');
+      job.worker = new Worker('./export-worker.js?v=6');
       job.worker.addEventListener('message', ({ data: result }) => {
         if (exportJob !== job) return;
         if (result.type === 'progress') setProgress(result.value, result.label);
@@ -645,21 +645,21 @@
     const job = { worker: null, abort: new AbortController() };
     exportJob = job;
     setBusy(true);
-    setProgress(0, '准备原网页画面');
+    setProgress(0, '准备 16:9 宽屏画面');
     get('export-note').textContent = '正在浏览器内处理原课件，页面较多时请稍等。';
     try {
       const cover = await pendingOriginalCover;
       if (exportJob !== job) return;
       const plan = await LessonReplica.render(source, data, cover, setProgress, job.abort.signal);
       if (exportJob !== job) return;
-      job.worker = new Worker('./replica-worker.js?v=5');
+      job.worker = new Worker('./replica-worker.js?v=7');
       job.worker.addEventListener('message', ({ data: result }) => {
         if (exportJob !== job) return;
         if (result.type === 'progress') setProgress(result.value, result.label);
         if (result.type === 'error') finish(job, '导出失败。' + result.message);
         if (result.type === 'done') {
-          download(result.bytes, result.mime, data.title, ' - 原样互动版.pptx');
-          finish(job, '原样版已生成。用桌面 WPS 或 PowerPoint 从第一页放映，即可点选答题。');
+          download(result.bytes, result.mime, data.title, ' - 16比9宽屏互动版.pptx');
+          finish(job, '宽屏版已生成。用桌面 WPS 或 PowerPoint 从第一页放映，即可点选答题。');
         }
       });
       job.worker.addEventListener('error', () =>
