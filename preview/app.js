@@ -20,7 +20,7 @@
   ].join('\n');
   const MAX_IMAGE = 6 * 1024 * 1024;
   const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-  const tabIds = ['paste', 'file'];
+  const tabIds = ['file', 'paste'];
   let lesson = null;
   let sourceVersion = 0;
   let coverVersion = 0;
@@ -80,8 +80,8 @@
     get('settings').hidden = true;
     get('preview-ready').hidden = true;
     get('preview-empty').hidden = false;
-    get('preview-controls').hidden = get('classroom-tools').hidden = true;
-    get('preview-desc').textContent = '查看实际放映路线和互动效果。';
+    get('download-zone').hidden = get('question-preview').hidden = get('classroom-tools').hidden = true;
+    get('question-preview').open = get('classroom-tools').open = false;
     get('export').disabled = true;
     get('export-mode').hidden = true;
     get('export-mode').disabled = true;
@@ -89,7 +89,7 @@
     get('edit-classroom').textContent = '添加课堂页';
     get('save-project').disabled = true;
     get('share-activity').disabled = true;
-    get('export-note').textContent = '下载后请用课堂电脑上的演示软件从第一页试放。';
+    get('export-note').textContent = '';
     showStatus();
   }
 
@@ -117,9 +117,6 @@
     get('preview-empty').hidden = true;
     preview.hidden = false;
     preview.style.setProperty('--source-canvas', '#' + data.c.canvas);
-    get('preview-desc').textContent = replica?.kind === 'scenario'
-      ? '试点第一轮的选项，查看观察反馈。'
-      : '试选第 ' + (previewIndex + 1) + ' 题，查看对应反馈。';
     get('lesson-name').textContent = data.brand;
     const facts = replica?.kind === 'scenario' ? ['双视角选择', '四卡排序', '16:9'] : [data.levelCount + ' 关', data.qs.length + ' 题'];
     if (data.scored && !isLight()) facts.push('累计计分');
@@ -576,7 +573,7 @@
     updateClassroomLabel();
     get('save-project').disabled = false;
     get('share-activity').disabled = false;
-    get('preview-controls').hidden = get('classroom-tools').hidden = false;
+    get('download-zone').hidden = get('question-preview').hidden = get('classroom-tools').hidden = false;
     prepareCover(lesson.coverUrl);
     renderPreview(lesson);
     if (original?.kind === 'scenario') {
@@ -771,7 +768,7 @@
   }
 
   function setBusy(active) {
-    for (const id of ['demo', 'demo-empty', 'source', 'analyze', 'paste-tab', 'file-tab', 'browse', 'cover-file', 'use-timing',
+    for (const id of ['demo', 'source', 'analyze', 'paste-tab', 'file-tab', 'browse', 'cover-file', 'use-timing',
       'edit-questions', 'new-project', 'open-project', 'open-recent', 'coach', 'save-recent', 'print-lesson']) {
       get(id).disabled = active;
     }
@@ -1131,8 +1128,8 @@
     chooseTab('paste');
     get('source').value = SAMPLE;
     loadSource(SAMPLE);
+    get('try-ppt').focus();
   });
-  get('demo-empty').addEventListener('click', () => get('demo').click());
   get('browse').addEventListener('click', () => get('file').click());
   get('file').addEventListener('change', (event) => {
     const file = event.target.files[0];
