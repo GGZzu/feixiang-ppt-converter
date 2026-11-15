@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="粘贴飞象老师生成的 HTML 源码，或选择 HTML 文件。浏览器内导出可以离线放映的互动 PPT。">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; frame-src 'self'; worker-src 'self'; connect-src 'self' https://*.fbcontent.cn; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="theme-color" content="#f6f8f6">
+  <title>飞象课件转互动 PPT</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./style.css?v=8">
+  <link rel="stylesheet" href="./teacher.css?v=1">
+  <script defer src="../acorn.js"></script>
+  <script defer src="./model.js?v=8"></script>
+  <script defer src="./project.js?v=8"></script>
+  <script defer src="./curriculum.js?v=8"></script>
+  <script defer src="./pptx.js?v=8"></script>
+  <script defer src="../qrcode.js"></script>
+  <script defer src="../fflate.js"></script>
+  <script defer src="./play.js?v=4"></script>
+  <script defer src="./replica.js?v=8"></script>
+  <script defer src="./scenario.js?v=8"></script>
+  <script defer src="./trial.js?v=1"></script>
+  <script defer src="./teacher.js?v=1"></script>
+  <script defer src="./compose.js?v=1"></script>
+  <script defer src="./app.js?v=9"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-inner">
+      <a class="wordmark" href="./" aria-label="回到课件转换试用版"><span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4m-2-13 5 2.5-5 2.5z"/></svg></span>课件转换</a>
+      <nav aria-label="页内导航">
+        <a href="#help">使用说明</a>
+        <button type="button" class="button secondary small" id="open-recent">最近课件</button>
+        <button type="button" class="button secondary small" id="demo">载入示例</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="intro" aria-labelledby="page-title">
+      <h1 id="page-title">飞象课件转互动 PPT</h1>
+      <p>导入飞象 HTML，试放后下载。到教室打开 WPS，就能用课件上的按钮做活动。</p>
+      <div class="info-note"><span class="status-dot" aria-hidden="true"></span>教师试用版 · 课件在本机处理</div>
+    </section>
+
+    <div class="workspace">
+      <section class="panel input-panel" aria-labelledby="import-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="import-title">导入课件</h2>
+            <p>从飞象老师的 HTML 开始，或新建自己的活动。</p>
+          </div>
+        </div>
+        <div class="project-actions">
+          <button type="button" class="button secondary small" id="new-project">新建课件</button>
+          <button type="button" class="button secondary small" id="open-project">打开课件项目</button>
+          <input type="file" id="project-file" accept=".json,application/json" hidden>
+        </div>
+        <div class="tabs" role="tablist" aria-label="导入方式">
+          <button id="paste-tab" type="button" role="tab" aria-selected="true" aria-controls="paste-panel">粘贴源码</button>
+          <button id="file-tab" type="button" role="tab" aria-selected="false" aria-controls="file-panel" tabindex="-1">选择 HTML 文件</button>
+        </div>
+        <div id="paste-panel" role="tabpanel" aria-labelledby="paste-tab">
+          <label class="sr-only" for="source">飞象课件 HTML 源码</label>
+          <textarea id="source" spellcheck="false" autocomplete="off" autocapitalize="off"
+            placeholder="将完整的 HTML 源码粘贴到这里。"></textarea>
+          <div class="source-actions">
+            <span class="muted" id="paste-info">复制完成后点识别课件</span>
+            <button type="button" class="button secondary" id="analyze">识别课件</button>
+          </div>
+        </div>
+        <div id="file-panel" role="tabpanel" aria-labelledby="file-tab" hidden>
+          <div class="drop-area" id="drop-area">
+            <div class="upload-icon" aria-hidden="true">↑</div>
+            <strong id="file-label">选择或拖入 HTML 文件</strong>
+            <span id="file-info">支持 .html、.htm，最大 8 MB</span>
+            <button type="button" class="button secondary" id="browse">选择文件</button>
+            <input type="file" id="file" accept=".html,.htm,text/html" hidden>
+          </div>
+        </div>
+        <p id="status" class="status" role="status" aria-live="polite" hidden></p>
+        <details id="settings" hidden>
+          <summary>封面和课堂节奏</summary>
+          <div class="settings">
+            <div>
+              <label for="cover-file">封面插图</label>
+              <input type="file" id="cover-file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp">
+              <p id="cover-state" class="muted" aria-live="polite"></p>
+            </div>
+            <div id="timing-box" hidden>
+              <label class="checkline" for="use-timing"><input type="checkbox" id="use-timing" checked>保留原课件的定时翻页</label>
+              <p id="timing-help" class="muted"></p>
+            </div>
+            <div class="coach-settings">
+              <label class="checkline"><input type="checkbox" id="coach"> 由老师控制讨论节奏</label>
+              <p id="coach-hint" class="muted"></p>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section class="panel output-panel" aria-labelledby="preview-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="preview-title">预览与导出</h2>
+            <p id="preview-desc">导入后可试选一道题，确认反馈。</p>
+          </div>
+          <span class="file-type" aria-hidden="true">PPTX</span>
+        </div>
+        <div class="preview idle-preview" id="preview-empty">
+          <svg viewBox="0 0 168 116" width="168" height="116" aria-hidden="true"><rect x="8" y="16" width="152" height="84" rx="10" fill="#fff" stroke="#adc9bf"/><path d="M8 35h152" stroke="#adc9bf"/><circle cx="19" cy="26" r="2" fill="#569485"/><circle cx="27" cy="26" r="2" fill="#8eafa6"/><path d="M26 54h50m-50 11h38m-38 12h47" stroke="#b4cbc3" stroke-width="5" stroke-linecap="round"/><rect x="98" y="53" width="40" height="31" rx="7" fill="#d7e9e2"/><path d="m114 61 11 7.5-11 7.5z" fill="#116751"/></svg>
+          <p>导入后可在这里试放</p>
+          <button class="button secondary small" type="button" id="demo-empty">用示例试一下</button>
+        </div>
+        <div class="preview ready" id="preview-ready" hidden>
+          <p class="lesson-name" id="lesson-name"></p>
+          <div class="facts" id="facts"></div>
+          <div id="compatibility" class="compatibility" aria-live="polite"></div>
+          <div class="preview-question" id="preview-question"></div>
+          <button type="button" class="button secondary small" id="edit-questions">编辑题目与反馈</button>
+        </div>
+        <div class="download-zone">
+          <div id="progress-area" class="progress-area" hidden>
+            <div class="progress-meta"><span id="progress-label" role="status" aria-live="polite">准备生成</span><span id="progress-number"></span></div>
+            <progress id="progress" max="100" value="0" aria-label="导出进度"></progress>
+          </div>
+          <div class="preview-controls" id="preview-controls" hidden>
+            <button type="button" class="button secondary" id="try-ppt">试放 PPT</button>
+            <button type="button" class="button secondary" id="inspect-ppt">导出检查</button>
+          </div>
+          <fieldset id="export-mode" class="export-mode" hidden disabled>
+            <legend>互动版本</legend>
+            <label><input type="radio" name="lesson-mode" value="full" checked> 完整互动</label>
+            <label><input type="radio" name="lesson-mode" value="light"> 轻量讨论</label>
+            <p id="mode-note" class="muted"></p>
+          </fieldset>
+          <div class="download-actions">
+            <button class="button primary" type="button" id="export-replica" hidden>下载宽屏互动 PPT</button>
+            <button class="button primary" type="button" id="export" disabled>下载互动 PPT</button>
+            <button class="button secondary" type="button" id="cancel" hidden>取消</button>
+          </div>
+          <p class="muted download-note" id="replica-note" hidden>用桌面 WPS 或 PowerPoint 从第一页放映，课堂页可直接编辑。</p>
+          <p class="muted download-note" id="export-note" aria-live="polite">下载后请用课堂电脑上的演示软件从第一页试放。</p>
+        </div>
+      </section>
+      <section class="panel classroom-tools" id="classroom-tools" aria-labelledby="classroom-tools-title" hidden>
+        <div class="panel-heading"><div><h2 id="classroom-tools-title">备课工具</h2></div></div>
+        <div class="project-actions">
+          <button type="button" class="button secondary" id="edit-classroom" disabled>添加课堂页</button>
+          <button type="button" class="button secondary" id="join-ppt">插入已有 PPT</button>
+          <button type="button" class="button secondary" id="print-lesson">任务单与教师提示</button>
+          <button type="button" class="button secondary" id="save-recent">存到最近课件</button>
+          <button type="button" class="button secondary" id="save-project" disabled>下载项目文件</button>
+          <button type="button" class="button secondary" id="share-activity" disabled>试玩与分享网页</button>
+        </div>
+      </section>
+    </div>
+
+    <section id="help" class="help" aria-label="使用说明">
+      <details>
+        <summary>试一份带分支的课堂活动</summary>
+        <p>《小组讨论卡住了》包含情境选择、排序和配对。试完可以打开示例项目，换成自己班的情境。</p>
+        <div class="project-actions">
+          <a class="button secondary small example-link" href="#class-example">试玩学生版</a>
+          <a class="button secondary small example-link" href="./classroom-example.json?v=4" download="小组讨论卡住了-课件项目.json">下载示例项目</a>
+        </div>
+      </details>
+      <details>
+        <summary>从飞象老师哪里复制代码？</summary>
+        <p>在飞象老师打开你生成的课件，复制它提供的完整 HTML 源码，或者下载 HTML 文件。回到这里粘贴源码并识别，或直接选择文件。飞象的分享链接需要先打开后取到源码。</p>
+      </details>
+      <details>
+        <summary>能保留哪些互动？</summary>
+        <p>目前支持源码中写明题目、选项和反馈或评分规则的闯关、情境选择和选择题。可导出点选、分支反馈、累计计分、结算，以及识别到的定时翻页。含情绪强度的兼容课件可在 PPT 内点选 1 到 10 分。</p>
+        <p>识别后可查看这份课件能保留哪些玩法。兼容的飞象课件可按固定 16:9 导出宽屏互动版。轻量讨论保留选项和反馈，省去累计得分。</p>
+        <p>新建的配对和排序活动在网页上可以拖放或点选，在离线 PPT 里用逐步点选完成。</p>
+      </details>
+      <details>
+        <summary>PPT 下载后怎么用？</summary>
+        <p>用桌面版 PowerPoint 或 WPS 演示打开文件，从第一页放映，使用课件上的按钮前进。一个文件会包含多条答题路线，放映只会经过当前路线。</p>
+        <p>点「添加课堂页」就能写游戏前的导入页和游戏后的讨论页。添加后，游戏结算会出现「继续上课」。保存课件项目，下次可在网站继续改。</p>
+      </details>
+    </section>
+  </main>
+
+  <dialog id="question-editor" aria-labelledby="editor-title">
+    <form id="question-form">
+      <div class="editor-heading">
+        <div>
+          <h2 id="editor-title">编辑题目与反馈</h2>
+          <p class="muted">应用后，同一道题在所有答题路线中的内容会一起更新。</p>
+        </div>
+        <button type="button" class="button secondary small" id="editor-cancel">取消</button>
+      </div>
+      <label class="editor-field">课件标题 <input id="project-title" maxlength="100" required></label>
+      <label class="editor-field">活动说明 <textarea id="project-intro" maxlength="320"></textarea></label>
+      <label><input id="project-scoring" type="checkbox"> 累计积分</label>
+      <label class="editor-field">选择题目 <select id="editor-select"></select></label>
+      <div class="project-actions">
+        <button type="button" class="button secondary small" id="move-up">上移</button>
+        <button type="button" class="button secondary small" id="move-down">下移</button>
+        <button type="button" class="button secondary small" id="remove-question">删除本题</button>
+      </div>
+      <div class="project-actions" aria-label="添加题目">
+        <button type="button" class="button secondary small" id="add-choice">添加选择题</button>
+        <button type="button" class="button secondary small" id="add-match">添加配对</button>
+        <button type="button" class="button secondary small" id="add-order">添加排序</button>
+      </div>
+      <div id="editor-fields"></div>
+      <p id="editor-error" role="alert" class="status" data-state="error" hidden></p>
+      <div class="editor-actions"><button type="submit" class="button primary">应用修改</button></div>
+    </form>
+  </dialog>
+  <dialog id="classroom-editor" aria-labelledby="classroom-editor-title">
+    <form id="classroom-form">
+      <div class="editor-heading">
+        <div>
+          <h2 id="classroom-editor-title">添加课堂页</h2>
+          <p class="muted">活动后加了页面，结算页会出现「继续上课」。</p>
+        </div>
+        <button type="button" class="button secondary small" id="classroom-cancel">取消</button>
+      </div>
+      <div id="classroom-fields"></div>
+      <div class="editor-actions"><button type="submit" class="button primary">应用课堂页</button></div>
+    </form>
+  </dialog>
+  <dialog id="share-dialog" aria-labelledby="share-title">
+    <div class="editor-heading">
+      <h2 id="share-title">网页活动</h2>
+      <button type="button" class="button secondary small" id="share-close">关闭</button>
+    </div>
+    <p class="muted">学生打开链接即可参加，反馈显示在各自设备上。分享链接包含题目和答案，适合课堂练习。</p>
+    <label class="editor-field" for="share-scope">分享范围</label>
+    <select id="share-scope"></select>
+    <label class="editor-field">活动链接 <input id="share-link" readonly></label>
+    <div class="project-actions">
+      <a class="button secondary" id="play-link" target="_blank" rel="noopener">打开试玩</a>
+      <button type="button" class="button secondary" id="copy-link">复制链接</button>
+    </div>
+    <canvas id="share-qr" aria-label="活动二维码" role="img" hidden></canvas>
+    <p id="share-status" class="muted" role="status"></p>
+  </dialog>
+  <dialog class="tool-dialog trial-dialog" id="trial-dialog" aria-labelledby="trial-title">
+    <div class="editor-heading">
+      <div><h2 id="trial-title">试放 PPT</h2><p class="muted">试走实际导出的互动路线。教室播放效果以 WPS 为准。</p></div>
+      <button type="button" class="button secondary small" data-close="trial-dialog">关闭</button>
+    </div>
+    <div class="trial-controls">
+      <label for="trial-variant">试放版本</label>
+      <select id="trial-variant"><option value="native">可编辑版</option><option value="wide">宽屏还原版</option></select>
+      <label for="trial-stage">跳到环节</label><select id="trial-stage" disabled></select>
+      <button class="button secondary small" id="trial-back" type="button" disabled>上一步</button>
+      <button class="button secondary small" id="trial-reset" type="button" disabled>从头试放</button>
+    </div>
+    <div class="trial-stage" id="trial-frame" aria-label="16:9 试放画面"></div>
+    <p class="muted" id="trial-status" role="status"></p>
+    <button type="button" class="button secondary small" id="trial-cover" hidden>更换封面</button>
+  </dialog>
+  <dialog class="tool-dialog" id="inspect-dialog" aria-labelledby="inspect-title">
+    <div class="editor-heading"><h2 id="inspect-title">导出检查</h2><button type="button" class="button secondary small" data-close="inspect-dialog">关闭</button></div>
+    <label class="editor-field" for="inspect-variant">检查版本</label>
+    <select id="inspect-variant"><option value="native">可编辑版</option><option value="wide">宽屏还原版</option></select>
+    <p class="muted" id="inspect-status" role="status"></p>
+    <div id="inspect-items" class="check-results"></div>
+    <button class="button primary" type="button" id="download-checked" disabled>下载当前版本</button>
+  </dialog>
+  <dialog class="tool-dialog" id="recent-dialog" aria-labelledby="recent-title">
+    <div class="editor-heading"><div><h2 id="recent-title">最近课件</h2><p class="muted">保存在这台设备的当前浏览器。可下载项目文件带走。</p></div><button type="button" class="button secondary small" data-close="recent-dialog">关闭</button></div>
+    <p class="muted" id="recent-status" role="status"></p>
+    <div id="recent-items" class="check-results"></div>
+    <form id="recent-copy" hidden>
+      <label class="editor-field" for="copy-name">班级副本名称</label>
+      <input id="copy-name" maxlength="64" required>
+      <button type="submit" class="button primary small">创建副本</button>
+    </form>
+  </dialog>
+  <dialog class="tool-dialog handout-dialog" id="handout-dialog" aria-labelledby="handout-title">
+    <div class="editor-heading"><h2 id="handout-title">任务单与教师提示</h2><button type="button" class="button secondary small" data-close="handout-dialog">关闭</button></div>
+    <div class="project-actions">
+      <label for="handout-kind">打印内容</label><select id="handout-kind"><option value="student">学生任务单</option><option value="teacher">教师提示</option></select>
+      <button type="button" class="button primary small" id="print-sheet">打印 / 存为 PDF</button>
+    </div>
+    <article id="handout" aria-label="打印预览"></article>
+  </dialog>
+  <dialog class="tool-dialog" id="join-dialog" aria-labelledby="join-title">
+    <div class="editor-heading"><div><h2 id="join-title">插入已有 PPT</h2><p class="muted">从旧课件里选一个入口，活动结束后回到指定页。合并后会下载一个新文件。</p></div><button type="button" class="button secondary small" data-close="join-dialog">关闭</button></div>
+    <form id="join-form">
+      <label class="editor-field">已有课件（16:9 .pptx） <input id="join-file" type="file" accept=".pptx" required></label>
+      <label class="editor-field">从哪页进入活动 <select id="join-enter" required disabled></select></label>
+      <label class="editor-field">活动结束回到哪页 <select id="join-return" required disabled></select></label>
+      <label class="editor-field">入口按钮位置 <select id="join-position"><option value="bottom-right">右下</option><option value="bottom-left">左下</option><option value="top-right">右上</option><option value="top-left">左上</option></select></label>
+      <label class="editor-field">插入的互动版本 <select id="join-variant"><option value="native">可编辑版</option><option value="wide">宽屏还原版</option></select></label>
+      <p class="status" id="join-status" role="status" hidden></p>
+      <div class="editor-actions"><button class="button primary" type="submit" id="join-submit" disabled>下载合并课件</button></div>
+    </form>
+  </dialog>
+  <section id="classroom-player" class="wrap" hidden aria-live="polite"></section>
+  <footer class="wrap footer"><span>课件转换</span><span>独立工具 · 适配飞象老师导出的 HTML</span></footer>
+  <noscript>需要启用浏览器的 JavaScript 才能生成 PPT。</noscript>
+</body>
+</html>
+
